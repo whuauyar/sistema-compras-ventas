@@ -431,7 +431,7 @@ test.group('Sucursales y series', (group) => {
 
   test('crea series validando prefijo y duplicados', async ({ client, assert }) => {
     new SunatFalsa()
-      .cuando('POST /series', exito({ creadas: [{ id: 12, serie: 'FC01' }] }, 201))
+      .cuando('POST /series', exito({ creadas: [{ id: 12, serie: 'BD01' }] }, 201))
       .instalar()
     const admin = await crearUsuario()
     const empresa = await crearEmpresa(admin)
@@ -454,12 +454,12 @@ test.group('Sucursales y series', (group) => {
       .post('/api/v1/series')
       .loginAs(admin)
       .headers(h)
-      .json({ tipo_documento: '07', serie: 'fc01', sucursal_id: sucursal.id })
+      .json({ tipo_documento: '08', serie: 'bd01', sucursal_id: sucursal.id })
     ok.assertStatus(201)
-    assert.equal(ok.body().serie, 'FC01')
+    assert.equal(ok.body().serie, 'BD01')
     assert.equal(ok.body().sunat_serie_id, 12)
     const lista = await client.get('/api/v1/series').loginAs(admin).headers(h)
-    assert.lengthOf(lista.body(), 3)
+    assert.lengthOf(lista.body(), 7)
   })
 
   test('registro de auditoría consultable por el Administrador', async ({ client, assert }) => {

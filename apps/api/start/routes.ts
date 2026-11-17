@@ -21,6 +21,11 @@ const UsuariosController = () => import('#controllers/usuarios_controller')
 const ComprobantesController = () => import('#controllers/comprobantes_controller')
 const ConsultasController = () => import('#controllers/consultas_controller')
 const AuditoriaController = () => import('#controllers/auditoria_controller')
+const CatalogoController = () => import('#controllers/catalogo_controller')
+const ClientesController = () => import('#controllers/clientes_controller')
+const ProveedoresController = () => import('#controllers/proveedores_controller')
+const InventarioController = () => import('#controllers/inventario_controller')
+const ComprasController = () => import('#controllers/compras_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -95,6 +100,70 @@ router
         router.get('consultas/documento', [ConsultasController, 'documento'])
 
         router.get('auditoria', [AuditoriaController, 'index']).use(p('auditoria.ver'))
+
+        // ---------------- Fase 3: catálogo, inventario, compras y cuentas por pagar
+        const verProductos = p('inventario.ver|ventas.crear|compras.crear')
+        router.get('categorias', [CatalogoController, 'categorias']).use(verProductos)
+        router
+          .post('categorias', [CatalogoController, 'crearCategoria'])
+          .use(p('inventario.gestionar'))
+        router
+          .put('categorias/:id', [CatalogoController, 'actualizarCategoria'])
+          .use(p('inventario.gestionar'))
+        router.get('productos', [CatalogoController, 'productos']).use(verProductos)
+        router.get('productos/:id', [CatalogoController, 'producto']).use(verProductos)
+        router
+          .post('productos', [CatalogoController, 'crearProducto'])
+          .use(p('inventario.gestionar'))
+        router
+          .put('productos/:id', [CatalogoController, 'actualizarProducto'])
+          .use(p('inventario.gestionar'))
+
+        router.get('almacenes', [InventarioController, 'almacenes']).use(verProductos)
+        router.get('inventario/kardex', [InventarioController, 'kardex']).use(p('inventario.ver'))
+        router
+          .post('inventario/ajustes', [InventarioController, 'ajuste'])
+          .use(p('inventario.gestionar'))
+        router
+          .post('inventario/transferencias', [InventarioController, 'transferencia'])
+          .use(p('inventario.gestionar'))
+
+        router
+          .get('proveedores', [ProveedoresController, 'index'])
+          .use(p('compras.ver|proveedores.gestionar'))
+        router
+          .post('proveedores', [ProveedoresController, 'store'])
+          .use(p('proveedores.gestionar|compras.crear'))
+        router
+          .put('proveedores/:id', [ProveedoresController, 'update'])
+          .use(p('proveedores.gestionar'))
+        router
+          .get('clientes', [ClientesController, 'index'])
+          .use(p('clientes.gestionar|ventas.crear|ventas.ver'))
+        router
+          .post('clientes', [ClientesController, 'store'])
+          .use(p('clientes.gestionar|ventas.crear'))
+        router.put('clientes/:id', [ClientesController, 'update']).use(p('clientes.gestionar'))
+
+        router.get('ordenes-compra', [ComprasController, 'ordenes']).use(p('compras.ver'))
+        router.get('ordenes-compra/:id', [ComprasController, 'orden']).use(p('compras.ver'))
+        router.post('ordenes-compra', [ComprasController, 'crearOrden']).use(p('compras.crear'))
+        router
+          .post('ordenes-compra/:id/aprobar', [ComprasController, 'aprobarOrden'])
+          .use(p('compras.aprobar'))
+        router
+          .post('ordenes-compra/:id/anular', [ComprasController, 'anularOrden'])
+          .use(p('compras.anular'))
+        router.get('compras', [ComprasController, 'index']).use(p('compras.ver'))
+        router.get('compras/:id', [ComprasController, 'show']).use(p('compras.ver'))
+        router.post('compras', [ComprasController, 'store']).use(p('compras.crear'))
+        router.post('compras/:id/anular', [ComprasController, 'anular']).use(p('compras.anular'))
+        router
+          .get('cuentas-por-pagar', [ComprasController, 'cuentasPorPagar'])
+          .use(p('cxp.gestionar'))
+        router
+          .post('cuentas-por-pagar/:id/pagos', [ComprasController, 'pagar'])
+          .use(p('cxp.gestionar'))
       })
       .use([middleware.auth(), middleware.empresa()])
   })

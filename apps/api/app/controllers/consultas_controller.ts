@@ -1,3 +1,4 @@
+import { qsPlano } from '#validators/qs'
 import type { HttpContext } from '@adonisjs/core/http'
 import '#types/http_context'
 import vine from '@vinejs/vine'
@@ -16,7 +17,9 @@ const validador = vine.compile(
 export default class ConsultasController {
   /** Autocompletar cliente/proveedor por DNI o RUC (vía API SUNAT). */
   async documento(ctx: HttpContext) {
-    const { tipo, numero } = await ctx.request.validateUsing(validador, { data: ctx.request.qs() })
+    const { tipo, numero } = await ctx.request.validateUsing(validador, {
+      data: qsPlano(ctx.request.qs()),
+    })
     return SunatGateway.cliente().buscarDocumento(ctx.empresa.credenciales(), tipo, numero)
   }
 }

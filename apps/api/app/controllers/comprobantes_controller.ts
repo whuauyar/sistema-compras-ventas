@@ -1,3 +1,4 @@
+import { qsPlano } from '#validators/qs'
 import type { HttpContext } from '@adonisjs/core/http'
 import '#types/http_context'
 import { Readable } from 'node:stream'
@@ -20,7 +21,9 @@ const servicio = new ComprobanteService()
 
 export default class ComprobantesController {
   async index({ empresa, request }: HttpContext) {
-    const f = await request.validateUsing(listarComprobantesValidator, { data: request.qs() })
+    const f = await request.validateUsing(listarComprobantesValidator, {
+      data: qsPlano(request.qs()),
+    })
     const consulta = Comprobante.query().where('empresa_id', empresa.id)
     if (f.estado) consulta.whereIn('sunat_estado', f.estado.split(','))
     if (f.tipo_documento) consulta.whereIn('tipo_documento', f.tipo_documento.split(','))

@@ -4,6 +4,11 @@ import Rol from '#models/rol'
 import Serie from '#models/serie'
 import Sucursal from '#models/sucursal'
 import Usuario from '#models/usuario'
+import Almacen from '#models/almacen'
+import Caja from '#models/caja'
+import Producto from '#models/producto'
+import Proveedor from '#models/proveedor'
+import Cliente from '#models/cliente'
 import UsuarioEmpresaRol from '#models/usuario_empresa_rol'
 import { crearRolesPlantilla } from '#services/permisos_service'
 import { SunatClient } from '#integrations/sunat/sunat_client'
@@ -132,23 +137,30 @@ export async function crearEmpresa(
       },
       { client: trx }
     )
+    const series: Array<[string, string]> = [
+      ['01', 'F001'],
+      ['03', 'B001'],
+      ['07', 'FC01'],
+      ['07', 'BC01'],
+      ['08', 'FD01'],
+      ['09', 'T001'],
+    ]
     await Serie.createMany(
-      [
-        {
-          empresaId: empresa.id,
-          sucursalId: sucursal.id,
-          tipoDocumento: '01',
-          serie: 'F001',
-          activo: true,
-        },
-        {
-          empresaId: empresa.id,
-          sucursalId: sucursal.id,
-          tipoDocumento: '03',
-          serie: 'B001',
-          activo: true,
-        },
-      ],
+      series.map(([tipoDocumento, serie]) => ({
+        empresaId: empresa.id,
+        sucursalId: sucursal.id,
+        tipoDocumento: tipoDocumento as any,
+        serie,
+        activo: true,
+      })),
+      { client: trx }
+    )
+    await Almacen.create(
+      { empresaId: empresa.id, sucursalId: sucursal.id, nombre: 'Almacén principal', activo: true },
+      { client: trx }
+    )
+    await Caja.create(
+      { empresaId: empresa.id, sucursalId: sucursal.id, nombre: 'Caja 1', activo: true },
       { client: trx }
     )
     return empresa
@@ -200,4 +212,48 @@ export const boletaValida = {
       tip_afe_igv: '10',
     },
   ],
+}
+
+/** Datos base de inventario para pruebas: almacén, caja, producto con/sin stock, proveedor y cliente. */
+export async function datosInventario(empresa: Empresa) {
+  const almacen = await Almacen.query().where('empresa_id', empresa.id).firstOrFail()
+  const caja = await Caja.query().where('empresa_id', empresa.id).firstOrFail()
+  const producto = await Producto.create({
+    empresaId: empresa.id,
+    codigo: `P${++secuencia}`,
+    nombre: 'Arroz 5kg',
+    unidad: 'NIU',
+    tipAfeIgv: '10',
+    controlaStock: true,
+    precioVenta: 23.6,
+    stockMinimo: 2,
+    activo: true,
+  })
+  const servicio = await Producto.create({
+    empresaId: empresa.id,
+    codigo: `S${++secuencia}`,
+    nombre: 'Delivery',
+    unidad: 'ZZ',
+    tipAfeIgv: '10',
+    controlaStock: false,
+    precioVenta: 5.9,
+    stockMinimo: 0,
+    activo: true,
+  })
+  const proveedor = await Proveedor.create({
+    empresaId: empresa.id,
+    tipoDoc: '6',
+    numDoc: '20100070970',
+    razonSocial: 'DISTRIBUIDORA SAC',
+    activo: true,
+  })
+  const cliente = await Cliente.create({
+    empresaId: empresa.id,
+    tipoDoc: '6',
+    numDoc: '20512345678',
+    razonSocial: 'ACME SAC',
+    direccion: 'Av. Lima 1',
+    activo: true,
+  })
+  return { almacen, caja, producto, servicio, proveedor, cliente }
 }

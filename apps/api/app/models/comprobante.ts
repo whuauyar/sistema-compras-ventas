@@ -93,6 +93,15 @@ export default class Comprobante extends BaseModel {
   declare sunatConsultadoEn: DateTime | null
 
   @column()
+  declare codMotivo: string | null
+
+  @column()
+  declare desMotivo: string | null
+
+  @column()
+  declare reponeStock: boolean
+
+  @column()
   declare createdBy: number | null
 
   @column.dateTime({ autoCreate: true })
