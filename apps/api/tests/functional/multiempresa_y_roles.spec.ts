@@ -7,7 +7,16 @@ import Sucursal from '#models/sucursal'
 import UsuarioEmpresaRol from '#models/usuario_empresa_rol'
 import Auditoria from '#models/auditoria'
 import { SunatGateway } from '#integrations/sunat/sunat_service'
-import { SunatFalsa, asignarRol, crearEmpresa, crearUsuario, exito } from '#tests/helpers'
+import Usuario from '#models/usuario'
+import {
+  SunatFalsa,
+  asignarRol,
+  crearEmpresa,
+  crearSuperadmin,
+  crearUsuario,
+  datosAdministrador,
+  exito,
+} from '#tests/helpers'
 
 test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
@@ -36,11 +45,15 @@ test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
       )
       .cuando('POST /series', exito({ creadas: [{ id: 1, serie: 'X' }] }, 201))
       .instalar()
-    const u = await crearUsuario()
+    const sa = await crearSuperadmin()
     const r = await client
-      .post('/api/v1/empresas/vincular')
-      .loginAs(u)
-      .json({ api_key: 'clave-api-123', api_secret: 'secreto-api-123' })
+      .post('/api/v1/admin/empresas/vincular')
+      .loginAs(sa)
+      .json({
+        api_key: 'clave-api-123',
+        api_secret: 'secreto-api-123',
+        ...datosAdministrador('nuevo-admin@negocio.pe'),
+      })
     r.assertStatus(201)
     assert.deepEqual(r.body().advertencias, [])
     assert.notProperty(r.body().empresa, 'sunat_api_secret_cifrada')
@@ -58,8 +71,17 @@ test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
     assert.equal(sucursal.sunatSucursalId, 5)
     assert.lengthOf(await Serie.query().where('empresa_id', empresa.id), 7)
     assert.equal(falsa.llamadas.filter((l) => l.ruta === '/series').length, 7)
-    await u.refresh()
+    const u = await Usuario.findByOrFail('email', 'nuevo-admin@negocio.pe')
     assert.equal(u.empresaPredeterminadaId, empresa.id)
+    const membresia = await UsuarioEmpresaRol.query()
+      .where({ usuarioId: u.id, empresaId: empresa.id })
+      .preload('rol')
+      .firstOrFail()
+    assert.equal(membresia.rol.nombre, 'Administrador')
+    assert.isFalse(
+      Boolean(await UsuarioEmpresaRol.query().where({ usuarioId: sa.id }).first()),
+      'el SuperAdmin no queda como miembro'
+    )
   })
 
   test('vincular con credenciales inválidas responde 422 claro', async ({ client }) => {
@@ -69,11 +91,11 @@ test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
         cuerpo: { estado: 'error', mensaje: 'Credenciales inválidas' },
       })
       .instalar()
-    const u = await crearUsuario()
+    const sa = await crearSuperadmin()
     const r = await client
-      .post('/api/v1/empresas/vincular')
-      .loginAs(u)
-      .json({ api_key: 'clave-mala-1', api_secret: 'secreto-malo-1' })
+      .post('/api/v1/admin/empresas/vincular')
+      .loginAs(sa)
+      .json({ api_key: 'clave-mala-1', api_secret: 'secreto-malo-1', ...datosAdministrador() })
     r.assertStatus(422)
     r.assertBodyContains({ errores: [{ campo: 'api_key' }] })
   })
@@ -85,9 +107,9 @@ test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
       .cuando('GET /empresa', exito({ ruc: existente.ruc, razon_social: 'X' }))
       .instalar()
     const r = await client
-      .post('/api/v1/empresas/vincular')
-      .loginAs(u)
-      .json({ api_key: 'clave-api-123', api_secret: 'secreto-api-123' })
+      .post('/api/v1/admin/empresas/vincular')
+      .loginAs(await crearSuperadmin())
+      .json({ api_key: 'clave-api-123', api_secret: 'secreto-api-123', ...datosAdministrador() })
     r.assertStatus(422)
   })
 
@@ -104,11 +126,10 @@ test.group('Multiempresa: alta, vínculo y aislamiento', (group) => {
         cuerpo: { estado: 'error', mensaje: 'Serie existente' },
       })
       .instalar()
-    const u = await crearUsuario()
     const r = await client
-      .post('/api/v1/empresas/vincular')
-      .loginAs(u)
-      .json({ api_key: 'clave-api-123', api_secret: 'secreto-api-123' })
+      .post('/api/v1/admin/empresas/vincular')
+      .loginAs(await crearSuperadmin())
+      .json({ api_key: 'clave-api-123', api_secret: 'secreto-api-123', ...datosAdministrador() })
     r.assertStatus(201)
     assert.isAbove(r.body().advertencias.length, 1)
     const empresa = await Empresa.findByOrFail('ruc', '20609999999')

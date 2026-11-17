@@ -15,7 +15,9 @@ import {
   boletaValida,
   comprobanteApi,
   crearEmpresa,
+  crearSuperadmin,
   crearUsuario,
+  datosAdministrador,
   exito,
 } from '#tests/helpers'
 
@@ -516,11 +518,11 @@ test.group('Alta de empresa nueva (POST /registro)', (group) => {
       .cuando('POST /sucursales', exito({ id: 30 }, 201))
       .cuando('POST /series', exito({ creadas: [{ id: 1, serie: 'X' }] }, 201))
       .instalar()
-    const u = await crearUsuario()
     const r = await client
-      .post('/api/v1/empresas/registrar')
-      .loginAs(u)
+      .post('/api/v1/admin/empresas/registrar')
+      .loginAs(await crearSuperadmin())
       .fields({
+        ...datosAdministrador(),
         ruc: '20605555555',
         razon_social: 'NUEVA SAC',
         direccion: 'Av. Nueva 1',
@@ -548,11 +550,11 @@ test.group('Alta de empresa nueva (POST /registro)', (group) => {
 
   test('rechaza certificados de más de 100 KB', async ({ client }) => {
     new SunatFalsa().instalar()
-    const u = await crearUsuario()
     const r = await client
-      .post('/api/v1/empresas/registrar')
-      .loginAs(u)
+      .post('/api/v1/admin/empresas/registrar')
+      .loginAs(await crearSuperadmin())
       .fields({
+        ...datosAdministrador(),
         ruc: '20605555556',
         razon_social: 'X SAC',
         direccion: 'D',

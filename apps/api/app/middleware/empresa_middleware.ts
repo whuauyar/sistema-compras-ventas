@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import '#types/http_context'
 import UsuarioEmpresaRol from '#models/usuario_empresa_rol'
+import { permisosHabilitados } from '#services/permisos_service'
 
 /**
  * Resuelve la empresa activa desde la cabecera `X-Empresa-Id` y verifica que el usuario
@@ -25,13 +26,22 @@ export default class EmpresaMiddleware {
       .preload('rol', (q) => q.preload('permisos'))
       .first()
 
-    if (!membresia || !membresia.empresa.activo) {
+    if (!membresia) {
       return ctx.response.forbidden({ mensaje: 'No tiene acceso a esta empresa.' })
     }
+    if (!membresia.empresa.activo) {
+      return ctx.response.forbidden({
+        mensaje: 'La empresa está suspendida. Contacte al administrador de la plataforma.',
+      })
+    }
 
+    // Permisos efectivos = los del rol, recortados al tope que el SuperAdmin habilitó
+    const habilitados = await permisosHabilitados(empresaId)
     ctx.empresa = membresia.empresa
     ctx.membresia = membresia
-    ctx.permisos = new Set(membresia.rol.permisos.map((p) => p.codigo))
+    ctx.permisos = new Set(
+      membresia.rol.permisos.map((p) => p.codigo).filter((c) => habilitados.has(c))
+    )
     return next()
   }
 }

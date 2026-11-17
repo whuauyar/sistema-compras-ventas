@@ -4,12 +4,27 @@ import type { ReactNode } from "react";
 import { useSesion } from "@/lib/sesion";
 import { Layout } from "@/components/Layout";
 import { Cargando, Vacio } from "@/components/ui";
-import { Login, Registro } from "@/pages/Acceso";
-import { ShieldOff } from "lucide-react";
+import { Login } from "@/pages/Acceso";
+import { Building2, LogOut, ShieldOff } from "lucide-react";
+import { Boton } from "@/components/ui";
 
 // Pantallas cargadas bajo demanda (bundle inicial pequeño)
 const NuevaEmpresa = lazy(() =>
   import("@/pages/NuevaEmpresa").then((m) => ({ default: m.NuevaEmpresa })),
+);
+const AdminLayout = lazy(() =>
+  import("@/pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })),
+);
+const EmpresasAdmin = lazy(() =>
+  import("@/pages/admin/Empresas").then((m) => ({ default: m.EmpresasAdmin })),
+);
+const EmpresaDetalle = lazy(() =>
+  import("@/pages/admin/EmpresaDetalle").then((m) => ({
+    default: m.EmpresaDetalle,
+  })),
+);
+const Plantillas = lazy(() =>
+  import("@/pages/admin/Plantillas").then((m) => ({ default: m.Plantillas })),
 );
 const Comprobantes = lazy(() =>
   import("@/pages/Comprobantes").then((m) => ({ default: m.Comprobantes })),
@@ -93,8 +108,36 @@ function Protegida({ children }: { children: ReactNode }) {
   const { cargando, usuario, empresas } = useSesion();
   if (cargando) return <Cargando texto="Iniciando sesión…" />;
   if (!usuario) return <Navigate to="/login" replace />;
-  if (empresas.length === 0) return <Navigate to="/empresas/nueva" replace />;
+  if (usuario.es_superadmin) return <Navigate to="/admin" replace />;
+  if (empresas.length === 0) return <SinEmpresas />;
   return <>{children}</>;
+}
+
+/** Usuario sin empresas activas (aún no asignado, desactivado o empresa suspendida). */
+function SinEmpresas() {
+  const { salir } = useSesion();
+  return (
+    <div className="grid min-h-full place-items-center px-4">
+      <div className="max-w-sm text-center">
+        <Building2 className="mx-auto mb-3 size-8 text-slate-400" />
+        <h1 className="text-lg font-semibold">Sin empresas asignadas</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Su cuenta no tiene acceso a ninguna empresa activa. Pida acceso al
+          Administrador de su empresa.
+        </p>
+        <Boton variante="secundario" className="mt-5" onClick={() => salir()}>
+          <LogOut className="size-4" /> Cerrar sesión
+        </Boton>
+      </div>
+    </div>
+  );
+}
+
+function SoloSuperadmin({ children }: { children: ReactNode }) {
+  const { cargando, usuario } = useSesion();
+  if (cargando) return <Cargando />;
+  if (!usuario) return <Navigate to="/login" replace />;
+  return usuario.es_superadmin ? <>{children}</> : <Navigate to="/" replace />;
 }
 
 function ConPermiso({
@@ -125,12 +168,6 @@ function Inicio() {
   return <Navigate to="/ventas/comprobantes" replace />;
 }
 
-function SoloAutenticado({ children }: { children: ReactNode }) {
-  const { cargando, usuario } = useSesion();
-  if (cargando) return <Cargando />;
-  return usuario ? <>{children}</> : <Navigate to="/login" replace />;
-}
-
 export default function App() {
   const { usuario } = useSesion();
   return (
@@ -141,17 +178,18 @@ export default function App() {
           element={usuario ? <Navigate to="/" replace /> : <Login />}
         />
         <Route
-          path="/registro"
-          element={usuario ? <Navigate to="/" replace /> : <Registro />}
-        />
-        <Route
-          path="/empresas/nueva"
+          path="/admin"
           element={
-            <SoloAutenticado>
-              <NuevaEmpresa />
-            </SoloAutenticado>
+            <SoloSuperadmin>
+              <AdminLayout />
+            </SoloSuperadmin>
           }
-        />
+        >
+          <Route index element={<EmpresasAdmin />} />
+          <Route path="empresas/nueva" element={<NuevaEmpresa />} />
+          <Route path="empresas/:id" element={<EmpresaDetalle />} />
+          <Route path="plantillas" element={<Plantillas />} />
+        </Route>
         <Route
           element={
             <Protegida>

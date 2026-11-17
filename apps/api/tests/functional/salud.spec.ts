@@ -26,7 +26,10 @@ test.group('Endurecimiento', () => {
     r.assertHeader('referrer-policy', 'no-referrer')
   })
 
-  test('bloquea el login tras demasiados intentos para la misma cuenta', async ({ client, assert }) => {
+  test('bloquea el login tras demasiados intentos para la misma cuenta', async ({
+    client,
+    assert,
+  }) => {
     const email = `fuerza-bruta-${Date.now()}@prueba.pe`
     for (let i = 0; i < 10; i++) {
       const r = await client.post('/api/v1/auth/login').json({ email, password: 'mala' })
@@ -37,7 +40,9 @@ test.group('Endurecimiento', () => {
     assert.include(bloqueado.body().mensaje, 'Demasiados intentos')
     assert.isAbove(Number(bloqueado.header('retry-after')), 0)
     // Otra cuenta desde la misma IP no queda bloqueada
-    const otra = await client.post('/api/v1/auth/login').json({ email: `otra-${email}`, password: 'mala' })
+    const otra = await client
+      .post('/api/v1/auth/login')
+      .json({ email: `otra-${email}`, password: 'mala' })
     otra.assertStatus(400)
   })
 })

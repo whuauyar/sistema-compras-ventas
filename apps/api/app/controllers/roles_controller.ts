@@ -5,10 +5,10 @@ import Permiso from '#models/permiso'
 import Rol from '#models/rol'
 import UsuarioEmpresaRol from '#models/usuario_empresa_rol'
 import { rolValidator } from '#validators/seguridad'
-import { asignarPermisos } from '#services/permisos_service'
+import { asignarPermisos, permisosHabilitados } from '#services/permisos_service'
 import { auditarCtx } from '#services/auditoria_service'
 import { ReglaNegocioError } from '#exceptions/regla_negocio_error'
-import { CODIGOS_PERMISO, ROL_ADMINISTRADOR } from '#constants/permisos'
+import { ROL_ADMINISTRADOR } from '#constants/permisos'
 
 function vistaRol(rol: Rol, usuarios = 0) {
   return {
@@ -23,9 +23,11 @@ function vistaRol(rol: Rol, usuarios = 0) {
 
 /** Configurador de Rol: matriz módulos × acciones. */
 export default class RolesController {
-  /** Catálogo de permisos agrupado por módulo (para pintar la matriz). */
-  async permisos() {
-    const permisos = await Permiso.query().orderBy(['modulo', 'accion'])
+  /** Permisos habilitados para la empresa, agrupados por módulo (para pintar la matriz). */
+  async permisos({ empresa }: HttpContext) {
+    const habilitados = await permisosHabilitados(empresa.id)
+    const catalogo = await Permiso.query().orderBy(['modulo', 'accion'])
+    const permisos = catalogo.filter((p) => habilitados.has(p.codigo))
     const agrupado: Record<
       string,
       Array<{ codigo: string; accion: string; descripcion: string }>
@@ -68,7 +70,7 @@ export default class RolesController {
         },
         { client: trx }
       )
-      await asignarPermisos(nuevo, datos.permisos, trx)
+      await asignarPermisos(nuevo, datos.permisos, trx, await permisosHabilitados(ctx.empresa.id))
       await auditarCtx(ctx, 'rol.crear', 'rol', nuevo.id, { despues: datos }, trx)
       return nuevo
     })
@@ -82,7 +84,8 @@ export default class RolesController {
     if (rol.esSistema && datos.nombre !== rol.nombre) {
       throw new ReglaNegocioError('El rol Administrador no se puede renombrar.')
     }
-    if (rol.esSistema && !CODIGOS_PERMISO.every((c) => datos.permisos.includes(c))) {
+    const habilitados = await permisosHabilitados(ctx.empresa.id)
+    if (rol.esSistema && ![...habilitados].every((c) => datos.permisos.includes(c))) {
       throw new ReglaNegocioError('El rol Administrador debe conservar todos los permisos.')
     }
     if (datos.nombre !== rol.nombre) await this.asegurarNombreLibre(ctx.empresa.id, datos.nombre)
@@ -93,7 +96,7 @@ export default class RolesController {
       rol.useTransaction(trx)
       rol.merge({ nombre: datos.nombre, descripcion: datos.descripcion ?? null })
       await rol.save()
-      await asignarPermisos(rol, datos.permisos, trx)
+      await asignarPermisos(rol, datos.permisos, trx, habilitados)
       await auditarCtx(ctx, 'rol.actualizar', 'rol', rol.id, { antes, despues: datos }, trx)
     })
     await rol.load('permisos')

@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Building2, KeyRound, TriangleAlert } from 'lucide-react'
+import { Building2, KeyRound, TriangleAlert, UserRoundCog } from 'lucide-react'
+import type { UseFormRegister } from 'react-hook-form'
 import { api, ApiError, mensajeError } from '@/lib/api'
-import { useSesion } from '@/lib/sesion'
 import { Boton, Campo, Entrada, Selector, Tarjeta } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -22,25 +22,40 @@ function useErroresCampo() {
   return { errores, capturar, limpiar: () => setErrores({}) }
 }
 
-/** Alta de empresa: registrar una nueva en la API SUNAT o vincular una existente. */
+/** Datos del usuario que quedará como Administrador de la empresa. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- se comparte entre dos formularios
+function CamposAdministrador({ register, errores }: { register: UseFormRegister<any>; errores: Record<string, string> }) {
+  return (
+    <fieldset className="grid gap-4 rounded-md border border-slate-200 p-4 sm:col-span-2 sm:grid-cols-2">
+      <legend className="flex items-center gap-1.5 px-1 text-sm font-medium"><UserRoundCog className="size-4 text-acento-600" /> Administrador de la empresa</legend>
+      <Campo etiqueta="Nombre completo" error={errores.admin_nombre}><Entrada {...register('admin_nombre', { required: true })} /></Campo>
+      <Campo etiqueta="Correo" error={errores.admin_email}><Entrada type="email" autoComplete="off" {...register('admin_email', { required: true })} /></Campo>
+      <Campo etiqueta="Contraseña inicial" error={errores.admin_password} ayuda="Solo si el correo aún no tiene cuenta. Mínimo 8 caracteres." className="sm:col-span-2">
+        <Entrada type="password" autoComplete="new-password" {...register('admin_password')} />
+      </Campo>
+    </fieldset>
+  )
+}
+
+/** Alta de empresa (solo SuperAdmin): registrar una nueva en la API SUNAT o vincular una existente. */
 export function NuevaEmpresa() {
   const [modo, setModo] = useState<'registrar' | 'vincular'>('vincular')
   const [advertencias, setAdvertencias] = useState<string[]>([])
-  const { recargar, cambiarEmpresa, empresas } = useSesion()
+  const [creada, setCreada] = useState<number | null>(null)
   const navegar = useNavigate()
 
   const terminar = async (r: RespuestaAlta) => {
-    await recargar()
-    cambiarEmpresa(r.empresa.id)
     toast.success(`Empresa ${r.empresa.razon_social} lista.`)
-    if (r.advertencias.length) setAdvertencias(r.advertencias)
-    else navegar('/')
+    if (r.advertencias.length) {
+      setCreada(r.empresa.id)
+      setAdvertencias(r.advertencias)
+    } else navegar(`/admin/empresas/${r.empresa.id}`)
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-xl font-semibold">Agregar empresa</h1>
-      <p className="mt-1 text-sm text-slate-500">Cada empresa usa sus propias credenciales del servicio de facturación SUNAT.</p>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="text-xl font-semibold">Nueva empresa</h1>
+      <p className="mt-1 text-sm text-slate-500">Cada empresa usa sus propias credenciales del servicio de facturación SUNAT y tiene su propio Administrador.</p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {[
@@ -66,41 +81,42 @@ export function NuevaEmpresa() {
               <li key={i} className="flex gap-2"><TriangleAlert className="mt-0.5 size-4 shrink-0" /> {a}</li>
             ))}
           </ul>
-          <p className="mt-3 text-sm text-slate-500">Puede completar sucursales y series desde Configuración.</p>
-          <Boton className="mt-4" onClick={() => navegar('/config/series')}>Ir a Configuración</Boton>
+          <p className="mt-3 text-sm text-slate-500">El Administrador de la empresa puede completar sucursales y series desde Configuración.</p>
+          <Boton className="mt-4" onClick={() => navegar(`/admin/empresas/${creada}`)}>Ver empresa</Boton>
         </Tarjeta>
       ) : (
         <div className="mt-6">{modo === 'vincular' ? <FormVincular alTerminar={terminar} /> : <FormRegistrar alTerminar={terminar} />}</div>
       )}
 
-      {empresas.length > 0 && advertencias.length === 0 && (
-        <Boton variante="fantasma" className="mt-4" onClick={() => navegar(-1)}>Cancelar</Boton>
+      {advertencias.length === 0 && (
+        <Boton variante="fantasma" className="mt-4" onClick={() => navegar('/admin')}>Cancelar</Boton>
       )}
     </div>
   )
 }
 
 function FormVincular({ alTerminar }: { alTerminar: (r: RespuestaAlta) => Promise<void> }) {
-  const { register, handleSubmit, formState } = useForm<{ api_key: string; api_secret: string }>()
+  const { register, handleSubmit, formState } = useForm<Record<string, string>>()
   const { errores, capturar, limpiar } = useErroresCampo()
   const enviar = handleSubmit(async (d) => {
     limpiar()
     try {
-      await alTerminar(await api.post<RespuestaAlta>('/empresas/vincular', d))
+      await alTerminar(await api.post<RespuestaAlta>('/admin/empresas/vincular', { ...d, admin_password: d.admin_password || undefined }))
     } catch (e) {
       capturar(e)
     }
   })
   return (
     <Tarjeta titulo="Vincular empresa existente">
-      <form onSubmit={enviar} className="flex flex-col gap-4">
+      <form onSubmit={enviar} className="grid gap-4">
         <Campo etiqueta="API Key" error={errores.api_key}>
           <Entrada autoComplete="off" {...register('api_key', { required: true })} />
         </Campo>
         <Campo etiqueta="API Secret" error={errores.api_secret} ayuda="Se guarda cifrado. Nunca se vuelve a mostrar.">
           <Entrada type="password" autoComplete="off" {...register('api_secret', { required: true })} />
         </Campo>
-        <Boton type="submit" cargando={formState.isSubmitting} className="self-start">Vincular empresa</Boton>
+        <CamposAdministrador register={register} errores={errores} />
+        <Boton type="submit" cargando={formState.isSubmitting} className="justify-self-start">Vincular empresa</Boton>
       </form>
     </Tarjeta>
   )
@@ -118,7 +134,7 @@ function FormRegistrar({ alTerminar }: { alTerminar: (r: RespuestaAlta) => Promi
       } else if (v) form.append(k, v)
     }
     try {
-      await alTerminar(await api.post<RespuestaAlta>('/empresas/registrar', form))
+      await alTerminar(await api.post<RespuestaAlta>('/admin/empresas/registrar', form))
     } catch (e) {
       capturar(e)
     }
@@ -154,6 +170,7 @@ function FormRegistrar({ alTerminar }: { alTerminar: (r: RespuestaAlta) => Promi
         <div />
         <Campo etiqueta="Client ID GRE (opcional)" ayuda="Necesario para guías de remisión"><Entrada {...register('gre_client_id')} /></Campo>
         <Campo etiqueta="Client Secret GRE (opcional)"><Entrada type="password" {...register('gre_client_secret')} /></Campo>
+        <CamposAdministrador register={register} errores={errores} />
         <Boton type="submit" cargando={formState.isSubmitting} className="self-start sm:col-span-2 sm:justify-self-start">Registrar empresa</Boton>
       </form>
     </Tarjeta>

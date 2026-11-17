@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -49,57 +48,7 @@ export function Login() {
           <Entrada type="password" autoComplete="current-password" {...register('password')} />
         </Campo>
         <Boton type="submit" cargando={formState.isSubmitting}>Ingresar</Boton>
-        <p className="text-center text-sm text-slate-500">
-          ¿No tiene cuenta? <Link to="/registro" className="font-medium text-acento-700">Crear cuenta</Link>
-        </p>
-      </form>
-    </Marco>
-  )
-}
-
-const esquemaRegistro = z
-  .object({
-    nombre_completo: z.string().min(3, 'Mínimo 3 caracteres'),
-    email: z.string().email('Correo no válido'),
-    password: z.string().min(8, 'Mínimo 8 caracteres'),
-    confirmar: z.string(),
-  })
-  .refine((d) => d.password === d.confirmar, { path: ['confirmar'], message: 'No coincide' })
-
-export function Registro() {
-  const { registrarse } = useSesion()
-  const navegar = useNavigate()
-  const [error, setError] = useState<string | null>(null)
-  const { register, handleSubmit, formState } = useForm<z.infer<typeof esquemaRegistro>>({ resolver: zodResolver(esquemaRegistro) })
-  const enviar = handleSubmit(async ({ nombre_completo, email, password }) => {
-    const d = { nombre_completo, email, password }
-    try {
-      await registrarse(d)
-      navegar('/empresas/nueva')
-    } catch (e) {
-      setError(mensajeError(e))
-    }
-  })
-  return (
-    <Marco titulo="Crear cuenta">
-      <form onSubmit={enviar} className="flex flex-col gap-4">
-        <Campo etiqueta="Nombre completo" error={formState.errors.nombre_completo?.message}>
-          <Entrada autoFocus {...register('nombre_completo')} />
-        </Campo>
-        <Campo etiqueta="Correo" error={formState.errors.email?.message}>
-          <Entrada type="email" {...register('email')} />
-        </Campo>
-        <Campo etiqueta="Contraseña" error={formState.errors.password?.message}>
-          <Entrada type="password" autoComplete="new-password" {...register('password')} />
-        </Campo>
-        <Campo etiqueta="Confirmar contraseña" error={formState.errors.confirmar?.message}>
-          <Entrada type="password" autoComplete="new-password" {...register('confirmar')} />
-        </Campo>
-        {error && <p className="text-sm text-rose-600">{error}</p>}
-        <Boton type="submit" cargando={formState.isSubmitting}>Crear cuenta</Boton>
-        <p className="text-center text-sm text-slate-500">
-          ¿Ya tiene cuenta? <Link to="/login" className="font-medium text-acento-700">Ingresar</Link>
-        </p>
+        <p className="text-center text-sm text-slate-500">¿No tiene cuenta? Solicítela al Administrador de su empresa.</p>
       </form>
     </Marco>
   )

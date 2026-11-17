@@ -5,6 +5,10 @@
 | auth      → usuario autenticado (token)
 | empresa   → además, empresa activa por cabecera X-Empresa-Id (aislamiento multiempresa)
 | permiso   → además, el rol del usuario en esa empresa debe tener el permiso
+|             (y la empresa debe tenerlo habilitado por el SuperAdmin)
+| superadmin→ consola de plataforma (/admin): empresas, topes de permisos, plantillas
+|
+| No hay registro público: el SuperAdmin da de alta las empresas y sus Administradores.
 */
 
 import router from '@adonisjs/core/services/router'
@@ -31,6 +35,7 @@ const VentasController = () => import('#controllers/ventas_controller')
 const CajaController = () => import('#controllers/caja_controller')
 const DocumentosController = () => import('#controllers/documentos_controller')
 const ReportesController = () => import('#controllers/reportes_controller')
+const AdminController = () => import('#controllers/admin_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -44,7 +49,6 @@ router.get('/health', async ({ response }) => {
 router
   .group(() => {
     // Públicas
-    router.post('auth/registro', [AuthController, 'registro']).use(limiteAcceso)
     router.post('auth/login', [AuthController, 'login']).use(limiteAcceso)
 
     // Autenticado, sin empresa activa
@@ -55,10 +59,29 @@ router
         router.get('perfil', [PerfilController, 'show'])
         router.put('perfil', [PerfilController, 'update'])
         router.put('perfil/password', [PerfilController, 'cambiarPassword'])
-        router.post('empresas/registrar', [EmpresasController, 'registrar'])
-        router.post('empresas/vincular', [EmpresasController, 'vincular'])
       })
       .use(middleware.auth())
+
+    // SuperAdmin de la plataforma
+    router
+      .group(() => {
+        router.get('permisos', [AdminController, 'permisos'])
+        router.get('empresas', [AdminController, 'empresas'])
+        router.get('empresas/:id', [AdminController, 'empresa'])
+        router.post('empresas/registrar', [AdminController, 'registrarEmpresa'])
+        router.post('empresas/vincular', [AdminController, 'vincularEmpresa'])
+        router.put('empresas/:id/estado', [AdminController, 'estadoEmpresa'])
+        router.put('empresas/:id/permisos', [AdminController, 'permisosEmpresa'])
+        router.get('empresas/:id/usuarios', [AdminController, 'usuarios'])
+        router.post('empresas/:id/usuarios', [AdminController, 'agregarUsuario'])
+        router.put('empresas/:id/usuarios/:membresiaId', [AdminController, 'actualizarUsuario'])
+        router.get('plantillas', [AdminController, 'plantillas'])
+        router.post('plantillas', [AdminController, 'crearPlantilla'])
+        router.put('plantillas/:id', [AdminController, 'actualizarPlantilla'])
+        router.delete('plantillas/:id', [AdminController, 'eliminarPlantilla'])
+      })
+      .prefix('admin')
+      .use([middleware.auth(), limiteApi, middleware.superadmin()])
 
     // Autenticado + empresa activa
     router

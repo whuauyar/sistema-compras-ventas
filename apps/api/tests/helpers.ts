@@ -10,7 +10,7 @@ import Producto from '#models/producto'
 import Proveedor from '#models/proveedor'
 import Cliente from '#models/cliente'
 import UsuarioEmpresaRol from '#models/usuario_empresa_rol'
-import { crearRolesPlantilla } from '#services/permisos_service'
+import { crearRolesPlantilla, habilitarPermisos } from '#services/permisos_service'
 import { SunatClient } from '#integrations/sunat/sunat_client'
 import { SunatGateway } from '#integrations/sunat/sunat_service'
 
@@ -95,6 +95,23 @@ export async function crearUsuario(datos: Partial<{ email: string; nombreComplet
   })
 }
 
+/** SuperAdmin de plataforma para las rutas /admin. */
+export async function crearSuperadmin() {
+  secuencia++
+  return Usuario.create({
+    nombreCompleto: 'Super Admin',
+    email: `super${secuencia}-${Date.now()}@plataforma.pe`,
+    password: 'clave-super-segura-123',
+    activo: true,
+    esSuperadmin: true,
+  })
+}
+
+/** Datos del Administrador que el SuperAdmin asigna al dar de alta una empresa. */
+export function datosAdministrador(email = `admin-${Date.now()}-${++secuencia}@empresa.pe`) {
+  return { admin_nombre: 'Admin Empresa', admin_email: email, admin_password: 'clave-admin-123' }
+}
+
 /** Empresa de prueba con roles plantilla, sucursal, series F001/B001 y un Administrador. */
 export async function crearEmpresa(
   admin: Usuario,
@@ -119,6 +136,7 @@ export async function crearEmpresa(
     })
     empresa.establecerCredenciales(`key-${secuencia}-abcdefgh`, `secret-${secuencia}-abcdefgh`)
     await empresa.save()
+    await habilitarPermisos(empresa.id, undefined, trx)
     const administrador = await crearRolesPlantilla(empresa.id, trx)
     await UsuarioEmpresaRol.create(
       { usuarioId: admin.id, empresaId: empresa.id, rolId: administrador.id, activo: true },

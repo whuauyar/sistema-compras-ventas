@@ -17,7 +17,9 @@ export const limiteAcceso = limiter.define('acceso', (ctx) => {
     .blockFor('15 mins')
     .usingKey(`acceso_${ctx.request.ip()}_${email}`)
     .limitExceeded((error) => {
-      error.setMessage('Demasiados intentos. Espere unos minutos e inténtelo de nuevo.').setStatus(429)
+      error
+        .setMessage('Demasiados intentos. Espere unos minutos e inténtelo de nuevo.')
+        .setStatus(429)
     })
 })
 

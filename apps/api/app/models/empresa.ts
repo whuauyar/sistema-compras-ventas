@@ -1,10 +1,11 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
-import type { HasMany } from '@adonisjs/lucid/types/relations'
+import { BaseModel, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
+import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import type { FormatoImpresion } from '#constants/sunat'
 import { cifrar, descifrar } from '#services/cifrado_service'
 import type { CredencialesSunat } from '#integrations/sunat/sunat_client'
 import Sucursal from '#models/sucursal'
+import Permiso from '#models/permiso'
 
 /** Empresa = tenant de la API SUNAT. Sus credenciales viven cifradas y nunca se serializan. */
 export default class Empresa extends BaseModel {
@@ -78,6 +79,14 @@ export default class Empresa extends BaseModel {
 
   @hasMany(() => Sucursal)
   declare sucursales: HasMany<typeof Sucursal>
+
+  /** Tope de permisos que la empresa puede usar (definido por el SuperAdmin). */
+  @manyToMany(() => Permiso, {
+    pivotTable: 'empresa_permiso',
+    pivotForeignKey: 'empresa_id',
+    pivotRelatedForeignKey: 'permiso_id',
+  })
+  declare permisosHabilitados: ManyToMany<typeof Permiso>
 
   establecerCredenciales(apiKey: string, apiSecret: string) {
     this.sunatApiKeyCifrada = cifrar(apiKey)

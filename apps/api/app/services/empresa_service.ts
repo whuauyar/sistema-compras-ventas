@@ -6,7 +6,7 @@ import type { CredencialesSunat } from '#integrations/sunat/sunat_client'
 import { SunatApiError } from '#integrations/sunat/sunat_errors'
 import { ReglaNegocioError } from '#exceptions/regla_negocio_error'
 import { TIPO_DOCUMENTO, type TipoDocumento } from '#constants/sunat'
-import { crearRolesPlantilla } from '#services/permisos_service'
+import { crearRolesPlantilla, habilitarPermisos } from '#services/permisos_service'
 import { auditar } from '#services/auditoria_service'
 import Almacen from '#models/almacen'
 import Caja from '#models/caja'
@@ -32,6 +32,19 @@ export interface DatosRegistroEmpresa {
   contrasenaCertificado?: string | null
   greClientId?: string | null
   greClientSecret?: string | null
+}
+
+/** Usuario que quedará como Administrador de la empresa. */
+export interface AdministradorDestino {
+  nombre: string
+  email: string
+  password?: string | null
+}
+
+/** Quién ejecuta la operación (para auditoría). */
+export interface Actor {
+  usuarioId: number
+  ip?: string | null
 }
 
 /** Series que se crean por defecto en la sucursal principal. */
@@ -68,8 +81,14 @@ export class EmpresaService {
    * Alta de una empresa NUEVA en la API SUNAT (POST /registro) y en el sistema.
    * El api_secret se devuelve una sola vez: se guarda cifrado ANTES de cualquier otro paso.
    */
-  async registrar(datos: DatosRegistroEmpresa, certificado: MultipartFile, usuario: Usuario) {
+  async registrar(
+    datos: DatosRegistroEmpresa,
+    certificado: MultipartFile,
+    administrador: AdministradorDestino,
+    actor: Actor
+  ) {
     await this.asegurarRucLibre(datos.ruc)
+    await this.validarAdministrador(administrador)
 
     const formulario = new FormData()
     const campos: Record<string, string | null | undefined> = {
@@ -114,14 +133,20 @@ export class EmpresaService {
         tiene_client_secret: Boolean(datos.greClientSecret),
       },
       { apiKey: registro.api_key, apiSecret: registro.api_secret },
-      usuario
+      administrador,
+      actor
     )
   }
 
   /**
    * Vincula una empresa YA registrada en la API (el RUC es único allí) usando sus credenciales.
    */
-  async vincular(credenciales: CredencialesSunat, usuario: Usuario) {
+  async vincular(
+    credenciales: CredencialesSunat,
+    administrador: AdministradorDestino,
+    actor: Actor
+  ) {
+    await this.validarAdministrador(administrador)
     let datosApi: DatosEmpresaApi
     try {
       datosApi = (await SunatGateway.cliente().obtenerEmpresa(credenciales)) as DatosEmpresaApi
@@ -134,14 +159,29 @@ export class EmpresaService {
       throw error
     }
     await this.asegurarRucLibre(datosApi.ruc)
-    return this.crearEmpresaLocal(datosApi, credenciales, usuario)
+    return this.crearEmpresaLocal(datosApi, credenciales, administrador, actor)
+  }
+
+  /** Falla antes de tocar la API SUNAT si el Administrador indicado no se puede crear. */
+  private async validarAdministrador(administrador: AdministradorDestino) {
+    const existente = await Usuario.findBy('email', administrador.email)
+    if (existente?.esSuperadmin) {
+      throw new ReglaNegocioError('El SuperAdmin no puede ser Administrador de una empresa.', [
+        { campo: 'admin_email', mensaje: 'Use otro correo.' },
+      ])
+    }
+    if (!existente && !administrador.password) {
+      throw new ReglaNegocioError('Indique una contraseña inicial para el Administrador.', [
+        { campo: 'admin_password', mensaje: 'Requerida para usuarios nuevos.' },
+      ])
+    }
   }
 
   private async asegurarRucLibre(ruc: string) {
     const existente = await Empresa.findBy('ruc', ruc)
     if (existente) {
       throw new ReglaNegocioError(
-        'Esta empresa ya existe en el sistema. Pida acceso a su Administrador.',
+        'Esta empresa ya existe en la plataforma. Adminístrela desde su ficha.',
         [{ campo: 'ruc', mensaje: 'RUC ya registrado.' }]
       )
     }
@@ -150,7 +190,8 @@ export class EmpresaService {
   private async crearEmpresaLocal(
     datos: DatosEmpresaApi,
     credenciales: CredencialesSunat,
-    usuario: Usuario
+    administrador: AdministradorDestino,
+    actor: Actor
   ) {
     // 1) Paso crítico y atómico: empresa + credenciales cifradas + roles + membresía de Administrador
     const empresa = await db.transaction(async (trx) => {
@@ -178,9 +219,23 @@ export class EmpresaService {
       nueva.establecerCredenciales(credenciales.apiKey, credenciales.apiSecret)
       await nueva.save()
 
-      const administrador = await crearRolesPlantilla(nueva.id, trx)
+      let usuario = await Usuario.query({ client: trx }).where('email', administrador.email).first()
+      if (!usuario) {
+        usuario = await Usuario.create(
+          {
+            nombreCompleto: administrador.nombre,
+            email: administrador.email,
+            password: administrador.password!,
+            activo: true,
+          },
+          { client: trx }
+        )
+      }
+
+      await habilitarPermisos(nueva.id, undefined, trx)
+      const rolAdmin = await crearRolesPlantilla(nueva.id, trx)
       await UsuarioEmpresaRol.create(
-        { usuarioId: usuario.id, empresaId: nueva.id, rolId: administrador.id, activo: true },
+        { usuarioId: usuario.id, empresaId: nueva.id, rolId: rolAdmin.id, activo: true },
         { client: trx }
       )
       if (!usuario.empresaPredeterminadaId) {
@@ -191,11 +246,12 @@ export class EmpresaService {
       await auditar(
         {
           empresaId: nueva.id,
-          usuarioId: usuario.id,
+          usuarioId: actor.usuarioId,
           accion: 'empresa.alta',
           entidad: 'empresa',
           entidadId: nueva.id,
-          despues: { ruc: nueva.ruc },
+          despues: { ruc: nueva.ruc, administrador: administrador.email },
+          ip: actor.ip ?? null,
         },
         trx
       )

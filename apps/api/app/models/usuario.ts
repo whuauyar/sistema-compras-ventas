@@ -45,6 +45,10 @@ export default class Usuario extends compose(BaseModel, AuthFinder) {
   @column()
   declare activo: boolean
 
+  /** Administrador de la plataforma (no de una empresa). */
+  @column()
+  declare esSuperadmin: boolean
+
   @column.dateTime()
   declare ultimoAccesoEn: DateTime | null
 

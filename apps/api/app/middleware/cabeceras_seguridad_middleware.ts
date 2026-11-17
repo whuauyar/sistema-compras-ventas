@@ -13,7 +13,8 @@ export default class CabecerasSeguridadMiddleware {
     response.header('Referrer-Policy', 'no-referrer')
     response.header('Cross-Origin-Resource-Policy', 'same-site')
     response.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-    if (app.inProduction) response.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    if (app.inProduction)
+      response.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return next()
   }
 }

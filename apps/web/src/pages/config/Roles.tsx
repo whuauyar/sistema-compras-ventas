@@ -6,6 +6,7 @@ import { api, mensajeError } from '@/lib/api'
 import { useSesion } from '@/lib/sesion'
 import { Boton, Campo, Cargando, Encabezado, Entrada, Insignia } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { MatrizPermisos, type Catalogo } from '@/components/MatrizPermisos'
 
 interface RolFila {
   id: number
@@ -14,14 +15,6 @@ interface RolFila {
   es_sistema: boolean
   permisos: string[]
   usuarios: number
-}
-
-type Catalogo = Record<string, Array<{ codigo: string; accion: string; descripcion: string }>>
-
-const NOMBRE_MODULO: Record<string, string> = {
-  compras: 'Compras', proveedores: 'Proveedores', cxp: 'Cuentas por pagar', ventas: 'Ventas', clientes: 'Clientes',
-  comprobantes: 'Comprobantes', guias: 'Guías', cxc: 'Cuentas por cobrar', caja: 'Caja', inventario: 'Inventario',
-  reportes: 'Reportes', auditoria: 'Auditoría', config: 'Configuración',
 }
 
 /** Configurador de Rol: matriz de permisos por módulo. */
@@ -54,13 +47,6 @@ export function Roles() {
 
   const todos = useMemo(() => Object.values(catalogo.data ?? {}).flat().map((p) => p.codigo), [catalogo.data])
   const bloqueado = Boolean(rol?.es_sistema)
-  const alternar = (codigos: string[], activar: boolean) =>
-    setMarcados((prev) => {
-      const s = new Set(prev)
-      codigos.forEach((c) => (activar ? s.add(c) : s.delete(c)))
-      return s
-    })
-
   const refrescar = async () => {
     await qc.invalidateQueries({ queryKey: ['roles'] })
     await recargar() // por si cambiaron los permisos del propio usuario
@@ -108,7 +94,7 @@ export function Roles() {
 
   return (
     <>
-      <Encabezado titulo="Roles y permisos" descripcion="Defina qué puede hacer cada rol en esta empresa." />
+      <Encabezado titulo="Roles y permisos" descripcion="Defina qué puede hacer cada rol en esta empresa. Solo aparecen los permisos que la plataforma habilitó para ella." />
       <div className="grid gap-5 lg:grid-cols-[16rem_1fr]">
         <div className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2">
           {roles.data?.map((r) => (
@@ -124,30 +110,9 @@ export function Roles() {
           <div className="grid gap-4 border-b border-slate-100 p-5 sm:grid-cols-2">
             <Campo etiqueta="Nombre"><Entrada value={nombre} disabled={bloqueado} onChange={(e) => setNombre(e.target.value)} /></Campo>
             <Campo etiqueta="Descripción"><Entrada value={descripcion} disabled={bloqueado} onChange={(e) => setDescripcion(e.target.value)} /></Campo>
-            {bloqueado && <p className="text-sm text-slate-500 sm:col-span-2">El rol Administrador siempre tiene todos los permisos.</p>}
+            {bloqueado && <p className="text-sm text-slate-500 sm:col-span-2">El rol Administrador siempre tiene todos los permisos que la plataforma habilitó para su empresa.</p>}
           </div>
-          <div className="divide-y divide-slate-100">
-            {Object.entries(catalogo.data ?? {}).map(([modulo, permisos]) => {
-              const codigos = permisos.map((p) => p.codigo)
-              const todosMarcados = codigos.every((c) => marcados.has(c))
-              return (
-                <div key={modulo} className="grid gap-2 px-5 py-3 sm:grid-cols-[12rem_1fr]">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input type="checkbox" className="size-4 accent-acento-600" disabled={bloqueado} checked={todosMarcados} onChange={(e) => alternar(codigos, e.target.checked)} />
-                    {NOMBRE_MODULO[modulo] ?? modulo}
-                  </label>
-                  <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-                    {permisos.map((p) => (
-                      <label key={p.codigo} className="flex items-center gap-1.5 text-sm text-slate-600" title={p.descripcion}>
-                        <input type="checkbox" className="size-4 accent-acento-600" disabled={bloqueado} checked={marcados.has(p.codigo)} onChange={(e) => alternar([p.codigo], e.target.checked)} />
-                        {p.descripcion}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <MatrizPermisos catalogo={catalogo.data ?? {}} marcados={marcados} onCambio={setMarcados} bloqueado={bloqueado} />
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-4">
             <Boton onClick={guardar} cargando={guardando} disabled={bloqueado || !nombre.trim()}><Save className="size-4" /> Guardar</Boton>
             {typeof seleccion === 'number' && <Boton variante="secundario" onClick={clonar}><Copy className="size-4" /> Clonar</Boton>}

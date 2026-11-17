@@ -5,22 +5,11 @@ import { crearEmpresa, crearUsuario } from '#tests/helpers'
 test.group('Autenticación y perfil', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('registra un usuario y devuelve token y sesión vacía', async ({ client, assert }) => {
+  test('ya no existe registro público: las cuentas las crea el SuperAdmin', async ({ client }) => {
     const r = await client
       .post('/api/v1/auth/registro')
       .json({ nombre_completo: 'Ana Pérez', email: 'ana@prueba.pe', password: 'clave-segura-1' })
-    r.assertStatus(201)
-    assert.match(r.body().token, /^scv_/)
-    assert.deepEqual(r.body().empresas, [])
-    assert.notProperty(r.body().usuario, 'password')
-  })
-
-  test('no permite correos duplicados', async ({ client }) => {
-    await crearUsuario({ email: 'dup@prueba.pe' })
-    const r = await client
-      .post('/api/v1/auth/registro')
-      .json({ nombre_completo: 'Otro', email: 'dup@prueba.pe', password: 'clave-segura-1' })
-    r.assertStatus(422)
+    r.assertStatus(404)
   })
 
   test('login devuelve las empresas con rol y permisos', async ({ client, assert }) => {

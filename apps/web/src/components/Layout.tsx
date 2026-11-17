@@ -162,7 +162,7 @@ export function Layout() {
             <span className="sr-only">Empresa activa</span>
             <select
               value={empresa?.id ?? ''}
-              onChange={(e) => (e.target.value === 'nueva' ? navegar('/empresas/nueva') : cambiarEmpresa(Number(e.target.value)))}
+              onChange={(e) => cambiarEmpresa(Number(e.target.value))}
               className="h-9 max-w-[13rem] appearance-none truncate rounded-md border border-slate-200 bg-white pl-3 pr-8 text-sm font-medium sm:max-w-sm"
             >
               {empresas.map((e) => (
@@ -170,7 +170,6 @@ export function Layout() {
                   {e.nombre_comercial || e.razon_social} · {e.ruc}
                 </option>
               ))}
-              <option value="nueva">+ Agregar empresa…</option>
             </select>
             <ChevronsUpDown className="pointer-events-none absolute right-2 size-4 text-slate-400" />
           </label>

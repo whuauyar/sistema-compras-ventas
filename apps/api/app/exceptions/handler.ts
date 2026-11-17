@@ -32,7 +32,9 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     if (error instanceof erroresLimite.E_TOO_MANY_REQUESTS) {
       const reintentarEn = error.response.availableIn
       ctx.response.header('Retry-After', String(reintentarEn))
-      return ctx.response.status(429).send({ mensaje: error.message, reintentar_en_segundos: reintentarEn })
+      return ctx.response
+        .status(429)
+        .send({ mensaje: error.message, reintentar_en_segundos: reintentarEn })
     }
     if (error instanceof SunatApiError) {
       return ctx.response.status(estadoParaErrorSunat(error)).send(error.toJSON())

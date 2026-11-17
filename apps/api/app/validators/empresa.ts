@@ -10,33 +10,51 @@ const ubigeo = vine
   .trim()
   .regex(/^\d{6}$/)
 
+const camposRegistro = {
+  ruc,
+  razon_social: vine.string().trim().maxLength(255),
+  nombre_comercial: vine.string().trim().maxLength(255).optional(),
+  direccion: vine.string().trim().maxLength(500),
+  ubigeo,
+  departamento: vine.string().trim().maxLength(100).optional(),
+  provincia: vine.string().trim().maxLength(100).optional(),
+  distrito: vine.string().trim().maxLength(100).optional(),
+  sol_user: vine.string().trim().maxLength(20),
+  sol_pass: vine.string().maxLength(50),
+  entorno: vine.enum(['beta', 'production'] as const),
+  regimen: vine.enum(['general', 'mype', 'rer', 'rus'] as const),
+  // La API acepta certificados de hasta 100 KB
+  certificado: vine.file({ size: '100kb', extnames: ['pfx', 'p12', 'pem', 'cer', 'crt'] }),
+  contrasena_certificado: vine.string().maxLength(100).optional(),
+  gre_client_id: vine.string().trim().maxLength(100).optional(),
+  gre_client_secret: vine.string().maxLength(200).optional(),
+}
+
+const camposVinculo = {
+  api_key: vine.string().trim().minLength(8).maxLength(200),
+  api_secret: vine.string().trim().minLength(8).maxLength(300),
+}
+
+/** Usuario que quedará como Administrador de la empresa (lo indica el SuperAdmin). */
+const camposAdministrador = {
+  admin_nombre: vine.string().trim().minLength(3).maxLength(150),
+  admin_email: vine.string().trim().email().normalizeEmail().maxLength(254),
+  // Obligatoria solo si el correo aún no existe en el sistema
+  admin_password: vine.string().minLength(8).maxLength(100).optional(),
+}
+
 export const registrarEmpresaValidator = vine.compile(
-  vine.object({
-    ruc,
-    razon_social: vine.string().trim().maxLength(255),
-    nombre_comercial: vine.string().trim().maxLength(255).optional(),
-    direccion: vine.string().trim().maxLength(500),
-    ubigeo,
-    departamento: vine.string().trim().maxLength(100).optional(),
-    provincia: vine.string().trim().maxLength(100).optional(),
-    distrito: vine.string().trim().maxLength(100).optional(),
-    sol_user: vine.string().trim().maxLength(20),
-    sol_pass: vine.string().maxLength(50),
-    entorno: vine.enum(['beta', 'production'] as const),
-    regimen: vine.enum(['general', 'mype', 'rer', 'rus'] as const),
-    // La API acepta certificados de hasta 100 KB
-    certificado: vine.file({ size: '100kb', extnames: ['pfx', 'p12', 'pem', 'cer', 'crt'] }),
-    contrasena_certificado: vine.string().maxLength(100).optional(),
-    gre_client_id: vine.string().trim().maxLength(100).optional(),
-    gre_client_secret: vine.string().maxLength(200).optional(),
-  })
+  vine.object({ ...camposRegistro, ...camposAdministrador })
 )
 
 export const vincularEmpresaValidator = vine.compile(
-  vine.object({
-    api_key: vine.string().trim().minLength(8).maxLength(200),
-    api_secret: vine.string().trim().minLength(8).maxLength(300),
-  })
+  vine.object({ ...camposVinculo, ...camposAdministrador })
+)
+
+export const estadoEmpresaValidator = vine.compile(vine.object({ activo: vine.boolean() }))
+
+export const permisosEmpresaValidator = vine.compile(
+  vine.object({ permisos: vine.array(vine.string().trim()).distinct() })
 )
 
 export const actualizarEmpresaValidator = vine.compile(

@@ -46,4 +46,5 @@ export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
   empresa: () => import('#middleware/empresa_middleware'),
   permiso: () => import('#middleware/permiso_middleware'),
+  superadmin: () => import('#middleware/superadmin_middleware'),
 })

@@ -27,6 +27,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   SUNAT_API_TIMEOUT_MS: Env.schema.number.optional(),
   CORS_ORIGINS: Env.schema.string.optional(),
 
+  /* SuperAdmin de la plataforma (lo crea el seeder si no existe; no cambia claves existentes) */
+  SUPERADMIN_EMAIL: Env.schema.string.optional(),
+  SUPERADMIN_PASSWORD: Env.schema.string.optional(),
+  SUPERADMIN_NOMBRE: Env.schema.string.optional(),
+
   /*
   |----------------------------------------------------------
   | Variables for configuring the limiter package

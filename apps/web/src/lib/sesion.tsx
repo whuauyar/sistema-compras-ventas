@@ -19,6 +19,7 @@ export interface UsuarioSesion {
   telefono: string | null
   formato_impresion: string | null
   empresa_predeterminada_id: number | null
+  es_superadmin: boolean
 }
 
 interface RespuestaSesion {
@@ -34,7 +35,6 @@ interface ValorSesion {
   empresa: EmpresaSesion | null
   puede: (permiso: string) => boolean
   ingresar: (email: string, password: string) => Promise<void>
-  registrarse: (datos: { nombre_completo: string; email: string; password: string }) => Promise<void>
   salir: () => Promise<void>
   cambiarEmpresa: (id: number) => void
   recargar: () => Promise<void>
@@ -95,7 +95,6 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       // "a|b" = basta con uno de los permisos
       puede: (p) => p.split('|').some((alt) => Boolean(empresa?.permisos.includes(alt))),
       ingresar: async (email, password) => aplicar(await api.post<RespuestaSesion>('/auth/login', { email, password })),
-      registrarse: async (datos) => aplicar(await api.post<RespuestaSesion>('/auth/registro', datos)),
       salir: async () => {
         await api.post('/auth/logout').catch(() => undefined)
         limpiar()

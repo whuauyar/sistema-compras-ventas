@@ -1,14 +1,6 @@
 import vine from '@vinejs/vine'
 import { FORMATOS_IMPRESION } from '#constants/sunat'
 
-export const registroUsuarioValidator = vine.compile(
-  vine.object({
-    nombre_completo: vine.string().trim().minLength(3).maxLength(150),
-    email: vine.string().trim().email().normalizeEmail().maxLength(254),
-    password: vine.string().minLength(8).maxLength(100),
-  })
-)
-
 export const loginValidator = vine.compile(
   vine.object({
     email: vine.string().trim().email().normalizeEmail(),
