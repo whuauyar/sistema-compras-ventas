@@ -5,6 +5,8 @@ import { ReintentarMasTarde, encolar, registrarManejador } from '#services/cola_
 import Comprobante from '#models/comprobante'
 import Empresa from '#models/empresa'
 import Job from '#models/job'
+import Anulacion from '#models/anulacion'
+import { AnulacionService } from '#services/anulacion_service'
 
 /**
  * Trabajos en segundo plano de la integración SUNAT:
@@ -20,7 +22,18 @@ async function cargar(payload: Record<string, any>) {
   return { comprobante, empresa }
 }
 
+const anulaciones = new AnulacionService()
+
 export function registrarJobsSunat() {
+  registrarManejador('sunat.anulacion', async (payload) => {
+    const anulacion = await Anulacion.find(payload.anulacionId)
+    if (!anulacion) return
+    const empresa = await Empresa.findOrFail(anulacion.empresaId)
+    await anulaciones.consultar(empresa, anulacion)
+    if (anulacion.estado === 'enviado' || anulacion.estado === 'pendiente')
+      throw new ReintentarMasTarde(180)
+  })
+
   registrarManejador('sunat.enviar', async (payload) => {
     const ctx = await cargar(payload)
     if (!ctx || ctx.comprobante.sunatEstado !== 'error_envio') return
@@ -57,6 +70,22 @@ export async function programarReconsultas(): Promise<number> {
       .first()
     if (!activo) {
       await encolar('sunat.reconsultar', { comprobanteId: c.id }, { empresaId: c.empresaId })
+      encolados++
+    }
+  }
+  // Anulaciones (baja/resumen) cuyo ticket sigue sin respuesta
+  const pendientes = await Anulacion.query()
+    .whereIn('estado', ['enviado', 'pendiente'])
+    .where('updated_at', '<', limite)
+    .limit(200)
+  for (const a of pendientes) {
+    const activo = await Job.query()
+      .whereIn('estado', ['pendiente', 'procesando'])
+      .where('tipo', 'sunat.anulacion')
+      .whereRaw("payload->>'anulacionId' = ?", [String(a.id)])
+      .first()
+    if (!activo) {
+      await encolar('sunat.anulacion', { anulacionId: a.id }, { empresaId: a.empresaId })
       encolados++
     }
   }

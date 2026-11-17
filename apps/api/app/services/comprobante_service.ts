@@ -179,6 +179,7 @@ export class ComprobanteService {
 
   /** Copia al registro local los datos fiscales devueltos por la API. */
   async aplicarRespuesta(comprobante: Comprobante, datos: Record<string, any>) {
+    const estadoAnterior = comprobante.sunatEstado
     const sunat = datos?.sunat ?? {}
     const totales = datos?.totales ?? {}
     comprobante.merge({
@@ -198,6 +199,11 @@ export class ComprobanteService {
       sunatConsultadoEn: DateTime.now(),
     })
     await comprobante.save()
+    if (estadoAnterior !== comprobante.sunatEstado) {
+      // Import diferido para evitar dependencia circular (efectos → ventas → comprobantes)
+      const { aplicarEfectos } = await import('#services/efectos_comprobante')
+      await aplicarEfectos(comprobante)
+    }
   }
 
   async resolverSerie(

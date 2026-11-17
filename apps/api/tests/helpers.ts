@@ -185,7 +185,6 @@ export function comprobanteApi(parcial: Record<string, any> = {}) {
     serie: 'B001',
     correlativo: 1,
     numero_completo: 'B001-1',
-    totales: { gravadas: 8.47, igv: 1.53, total: 10 },
     sunat: {
       estado: 'aceptado',
       codigo: '0',

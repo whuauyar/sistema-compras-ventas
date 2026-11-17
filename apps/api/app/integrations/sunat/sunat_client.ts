@@ -193,6 +193,33 @@ export class SunatClient {
     })
   }
 
+  // ---------------------------------------------------------------- Anulaciones (RA) y resumen diario (RC)
+
+  /** Comunicación de baja: facturas, NC y ND (NO boletas). Respuesta plana: id_anulacion, identifier, estado_sunat. */
+  comunicarBaja(cred: CredencialesSunat, payload: unknown, idempotencyKey: string) {
+    return this.datos<Record<string, any>>('/anulaciones', {
+      metodo: 'POST',
+      cuerpo: payload,
+      credenciales: cred,
+      idempotencyKey,
+    })
+  }
+
+  /** Resumen diario en modo anulación de boletas. Respuesta plana: id_resumen, identifier, estado_sunat. */
+  resumenDiario(cred: CredencialesSunat, payload: unknown, idempotencyKey: string) {
+    return this.datos<Record<string, any>>('/resumenes', {
+      metodo: 'POST',
+      cuerpo: payload,
+      credenciales: cred,
+      idempotencyKey,
+    })
+  }
+
+  estadoAnulacion(cred: CredencialesSunat, tipo: 'baja' | 'resumen', id: number) {
+    const ruta = tipo === 'baja' ? 'anulaciones' : 'resumenes'
+    return this.datos<Record<string, any>>(`/${ruta}/${id}/estado`, { credenciales: cred })
+  }
+
   // ---------------------------------------------------------------- Núcleo HTTP
 
   private async datos<T>(ruta: string, opciones: OpcionesPeticion): Promise<T> {

@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { aJson } from '#models/columnas'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
 export default class Anulacion extends BaseModel {
@@ -34,7 +35,7 @@ export default class Anulacion extends BaseModel {
   @column()
   declare comprobanteIds: number[]
 
-  @column()
+  @column({ prepare: aJson })
   declare ultimaRespuesta: unknown
 
   @column()

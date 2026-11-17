@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { aJson } from '#models/columnas'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
 export default class Job extends BaseModel {
@@ -10,7 +11,7 @@ export default class Job extends BaseModel {
   @column()
   declare tipo: string
 
-  @column()
+  @column({ prepare: aJson })
   declare payload: Record<string, unknown>
 
   @column()

@@ -28,6 +28,7 @@ const InventarioController = () => import('#controllers/inventario_controller')
 const ComprasController = () => import('#controllers/compras_controller')
 const VentasController = () => import('#controllers/ventas_controller')
 const CajaController = () => import('#controllers/caja_controller')
+const DocumentosController = () => import('#controllers/documentos_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -188,7 +189,27 @@ router
           .post('cajas/aperturas/:id/movimientos', [CajaController, 'movimiento'])
           .use(p('caja.operar'))
         router.post('cajas/aperturas/:id/cerrar', [CajaController, 'cerrar']).use(p('caja.operar'))
-        /*FASE5*/
+
+        // ---------------- Fase 5: notas de crédito/débito, guías y anulaciones
+        router.get('documentos/motivos', [DocumentosController, 'motivos']).use(p('ventas.ver'))
+        router
+          .get('comprobantes/:id/relacionados', [DocumentosController, 'relacionados'])
+          .use(p('ventas.ver'))
+        router
+          .post('comprobantes/:id/nota-credito', [DocumentosController, 'notaCredito'])
+          .use(p('comprobantes.emitir_nc'))
+        router
+          .post('comprobantes/:id/nota-debito', [DocumentosController, 'notaDebito'])
+          .use(p('comprobantes.emitir_nd'))
+        router.post('guias', [DocumentosController, 'guia']).use(p('guias.emitir'))
+        router
+          .get('anulaciones', [DocumentosController, 'anulaciones'])
+          .use(p('comprobantes.anular'))
+        router.post('anulaciones', [DocumentosController, 'anular']).use(p('comprobantes.anular'))
+        router
+          .post('anulaciones/:id/consultar', [DocumentosController, 'consultarAnulacion'])
+          .use(p('comprobantes.anular'))
+        /*FASE6*/
       })
       .use([middleware.auth(), middleware.empresa()])
   })

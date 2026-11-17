@@ -1,8 +1,7 @@
 import { DateTime } from 'luxon'
+import { aJson, aNumero } from '#models/columnas'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import type { EstadoSunat, TipoDocumento } from '#constants/sunat'
-
-const aNumero = (v: unknown) => (v === null || v === undefined ? v : Number(v))
 
 /** Espejo local del comprobante emitido en la API SUNAT (la API es la fuente de verdad fiscal). */
 export default class Comprobante extends BaseModel {
@@ -77,16 +76,16 @@ export default class Comprobante extends BaseModel {
   @column()
   declare sunatDescripcion: string | null
 
-  @column()
+  @column({ prepare: aJson })
   declare sunatNotas: unknown
 
   @column()
   declare hashCpe: string | null
 
-  @column({ serializeAs: null })
+  @column({ serializeAs: null, prepare: aJson })
   declare payload: Record<string, unknown>
 
-  @column({ serializeAs: null })
+  @column({ serializeAs: null, prepare: aJson })
   declare ultimaRespuesta: unknown
 
   @column.dateTime()
@@ -100,6 +99,19 @@ export default class Comprobante extends BaseModel {
 
   @column()
   declare reponeStock: boolean
+
+  /** Ítems que devuelve una NC: [{ ventaItemId, productoId, almacenId, cantidad, costoUnitario }] */
+  @column({ serializeAs: null, prepare: aJson })
+  declare detalleStock: Array<{
+    ventaItemId: number
+    productoId: number
+    almacenId: number
+    cantidad: number
+    costoUnitario: number
+  }> | null
+
+  @column()
+  declare stockAplicado: boolean
 
   @column()
   declare createdBy: number | null

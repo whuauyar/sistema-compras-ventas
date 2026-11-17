@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { aJson } from '#models/columnas'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
 export default class Auditoria extends BaseModel {
@@ -22,10 +23,10 @@ export default class Auditoria extends BaseModel {
   @column()
   declare entidadId: string | null
 
-  @column()
+  @column({ prepare: aJson })
   declare antes: unknown
 
-  @column()
+  @column({ prepare: aJson })
   declare despues: unknown
 
   @column()
