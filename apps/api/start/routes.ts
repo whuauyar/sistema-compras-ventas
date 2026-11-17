@@ -29,6 +29,7 @@ const ComprasController = () => import('#controllers/compras_controller')
 const VentasController = () => import('#controllers/ventas_controller')
 const CajaController = () => import('#controllers/caja_controller')
 const DocumentosController = () => import('#controllers/documentos_controller')
+const ReportesController = () => import('#controllers/reportes_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -209,7 +210,10 @@ router
         router
           .post('anulaciones/:id/consultar', [DocumentosController, 'consultarAnulacion'])
           .use(p('comprobantes.anular'))
-        /*FASE6*/
+
+        // ---------------- Fase 6: dashboard y reportes
+        router.get('dashboard', [ReportesController, 'dashboard']).use(p('reportes.ver'))
+        router.get('reportes/:tipo', [ReportesController, 'show']).use(p('reportes.ver'))
       })
       .use([middleware.auth(), middleware.empresa()])
   })
