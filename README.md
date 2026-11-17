@@ -97,16 +97,18 @@ Frontend: `VITE_API_URL` (URL pública del backend; se fija **al compilar**).
 
 ## Despliegue en Railway
 
-Un proyecto con 4 servicios, todos desde este repo:
+Proyecto `sistema-compras-ventas` con 4 servicios desde este repo. La configuración vive en cada servicio (no hay `railway.json`: con `rootDirectory` Railway lo aplicaba por encima de la del servicio y el `npm ci` chocaba con la caché de Vite).
 
-| Servicio | Root directory | Config file | Notas |
-|---|---|---|---|
-| `postgres` | — | — | Plantilla PostgreSQL |
-| `api` | `apps/api` | `apps/api/railway.json` | Variables de la tabla anterior; `DATABASE_URL=${{postgres.DATABASE_URL}}`; `HOST=0.0.0.0`, `NODE_ENV=production`, `LOG_LEVEL=info`. Migra y siembra permisos en pre-deploy |
-| `worker` | `apps/api` | `apps/api/railway.worker.json` | Mismas variables que `api`. Sin dominio público |
-| `web` | `apps/web` | `apps/web/railway.json` | `VITE_API_URL=https://<dominio-api>` |
+| Servicio | Root | Build | Pre-deploy | Start | Healthcheck |
+|---|---|---|---|---|---|
+| `Postgres` | — | plantilla | — | — | — |
+| `api` | `/apps/api` | `node ace build && cd build && npm ci --omit=dev` | `cd build && node ace migration:run --force && node ace db:seed` | `cd build && node bin/server.js` | `/health` |
+| `worker` | `/apps/api` | igual que `api` | — | `cd build && node ace jobs:work` | — (restart ALWAYS) |
+| `web` | `/apps/web` | `npm run build` | — | `npm start` | `/` |
 
-Luego poner el dominio de `web` en `CORS_ORIGINS` del `api`.
+Variables: `api` → `NODE_ENV=production`, `HOST=0.0.0.0`, `PORT=8080`, `APP_KEY`, `ENCRYPTION_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `SUNAT_API_BASE_URL`, `CORS_ORIGINS=https://${{web.RAILWAY_PUBLIC_DOMAIN}}`, `LIMITER_STORE=database`. `worker` → las mismas (referenciando `${{api.APP_KEY}}`, etc.). `web` → `PORT=8080`, `VITE_API_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}` (se fija al compilar).
+
+Cada push a `main` despliega solo el servicio cuyos archivos cambiaron (watch patterns `/apps/api/**` y `/apps/web/**`).
 
 ## Decisiones de arquitectura
 
