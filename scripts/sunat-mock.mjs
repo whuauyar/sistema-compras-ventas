@@ -9,6 +9,7 @@ import { createServer } from 'node:http'
 
 const PUERTO = Number(process.env.PUERTO ?? 9999)
 const docs = new Map()
+const anulaciones = new Map()
 const correlativos = {}
 let siguienteId = 1000
 
@@ -43,7 +44,7 @@ createServer(async (req, res) => {
   }
 
   if (m === 'GET' && ruta === '/empresa')
-    return ok(res, { id: 1, ruc: '20601234567', razon_social: 'EMPRESA DEMO SAC', nombre_comercial: 'Demo', direccion: 'Av. Demo 123, Lima', ubigeo: '150101', entorno: 'beta', tax_regime: 'general', client_id: null, tiene_client_secret: false })
+    return ok(res, { id: 1, ruc: '20601234567', razon_social: 'EMPRESA DEMO SAC', nombre_comercial: 'Demo', direccion: 'Av. Demo 123, Lima', ubigeo: '150101', entorno: 'beta', tax_regime: 'general', client_id: 'demo-gre', tiene_client_secret: true })
   if (m === 'GET' && ruta === '/sucursales') return ok(res, [{ id: 1, nombre: 'Principal', cod_local: '0000', es_principal: true }])
   if (m === 'POST' && ruta === '/sucursales') return ok(res, { id: ++siguienteId }, 201)
   if (m === 'POST' && ruta === '/series') {
@@ -53,15 +54,16 @@ createServer(async (req, res) => {
   if (m === 'GET' && ruta === '/buscar-documento')
     return ok(res, { razon_social: url.searchParams.get('tipo') === '6' ? 'CLIENTE EMPRESA SAC' : 'JUAN PEREZ', direccion: 'Jr. Cliente 456, Lima' })
 
-  const emision = /^\/(boletas|facturas)$/.exec(ruta)
+  const TIPOS = { boletas: '03', facturas: '01', 'notas-credito': '07', 'notas-debito': '08', 'guias-remision': '09' }
+  const emision = /^\/(boletas|facturas|notas-credito|notas-debito|guias-remision)$/.exec(ruta)
   if (m === 'POST' && emision) {
     const b = await leer(req)
     correlativos[b.serie] = (correlativos[b.serie] ?? 0) + 1
-    const total = b.items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0)
+    const total = emision[1] === 'guias-remision' ? 0 : b.items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0)
     const gravadas = +(total / 1.18).toFixed(2)
     const doc = {
       id: ++siguienteId,
-      tipo_documento: emision[1] === 'boletas' ? '03' : '01',
+      tipo_documento: TIPOS[emision[1]],
       serie: b.serie,
       correlativo: correlativos[b.serie],
       numero_completo: `${b.serie}-${correlativos[b.serie]}`,
@@ -73,7 +75,25 @@ createServer(async (req, res) => {
     return ok(res, doc, 201)
   }
 
-  const uno = /^\/(boletas|facturas)\/(\d+)(\/(pdf|xml|cdr|reenviar))?$/.exec(ruta)
+  // Anulaciones: baja (facturas/notas) y resumen (boletas). Se aceptan en la primera consulta.
+  if (m === 'POST' && (ruta === '/anulaciones' || ruta === '/resumenes')) {
+    const b = await leer(req)
+    const id = ++siguienteId
+    const objetivos = ruta === '/resumenes'
+      ? (b.anular ?? []).map((a) => docs.get(Number(a.id))).filter(Boolean)
+      : (b.detalles ?? []).map((d) => [...docs.values()].find((x) => x.serie === d.serie && x.correlativo === Number(d.correlativo))).filter(Boolean)
+    for (const d of objetivos) d.sunat = { ...d.sunat, estado: 'anulacion_en_proceso' }
+    anulaciones.set(id, objetivos)
+    const clave = ruta === '/resumenes' ? 'id_resumen' : 'id_anulacion'
+    return ok(res, { [clave]: id, identifier: `${ruta === '/resumenes' ? 'RC' : 'RA'}-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${id}`, estado_sunat: 'enviado' }, 201)
+  }
+  const estadoAnul = /^\/(anulaciones|resumenes)\/(\d+)\/estado$/.exec(ruta)
+  if (m === 'GET' && estadoAnul) {
+    for (const d of anulaciones.get(Number(estadoAnul[2])) ?? []) d.sunat = { ...d.sunat, estado: 'anulado' }
+    return ok(res, { estado_sunat: 'aceptado', descripcion: 'La Comunicación de baja ha sido aceptada' })
+  }
+
+  const uno = /^\/(boletas|facturas|notas-credito|notas-debito|guias-remision)\/(\d+)(\/(pdf|xml|cdr|reenviar))?$/.exec(ruta)
   if (uno) {
     const doc = docs.get(Number(uno[2]))
     if (!doc) {
@@ -93,6 +113,7 @@ createServer(async (req, res) => {
       return res.end('PK')
     }
     if (uno[4] === 'reenviar') doc.rechazar = false
+    if (doc.sunat.estado === 'anulado' || doc.sunat.estado === 'anulacion_en_proceso') return ok(res, doc)
     doc.sunat = doc.rechazar
       ? { estado: 'rechazado', codigo: '2800', descripcion: 'El dato ingresado en el tipo de documento de identidad del receptor no está permitido.', notas: [], hash_cpe: null }
       : { estado: 'aceptado', codigo: '0', descripcion: `El comprobante ${doc.numero_completo} ha sido aceptado`, notas: [], hash_cpe: 'hAsH123=' }

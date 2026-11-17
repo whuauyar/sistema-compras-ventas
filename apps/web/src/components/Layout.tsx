@@ -1,7 +1,20 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
+  Ban,
   Building2,
+  ClipboardList,
+  Factory,
+  HandCoins,
+  History,
+  Landmark,
+  LayoutDashboard,
+  MonitorSmartphone,
+  Receipt,
+  ScrollText,
+  Truck,
+  UserCog,
+  Wallet,
   ChartColumn,
   ChevronsUpDown,
   FilePlus2,
@@ -32,16 +45,39 @@ const MENU: Array<{ grupo: string; items: Item[] }> = [
   {
     grupo: 'Ventas',
     items: [
+      { a: '/ventas/pos', texto: 'Punto de venta', icono: <MonitorSmartphone />, permiso: 'ventas.crear' },
+      { a: '/ventas', texto: 'Ventas', icono: <Receipt />, permiso: 'ventas.ver' },
       { a: '/ventas/comprobantes', texto: 'Comprobantes', icono: <FileText />, permiso: 'ventas.ver' },
-      { a: '/ventas/emitir', texto: 'Emitir comprobante', icono: <FilePlus2 />, permiso: 'comprobantes.emitir' },
+      { a: '/ventas/guias', texto: 'Guías de remisión', icono: <Truck />, permiso: 'guias.emitir' },
+      { a: '/ventas/anulaciones', texto: 'Anulaciones', icono: <Ban />, permiso: 'comprobantes.anular' },
+      { a: '/ventas/cuentas-por-cobrar', texto: 'Cuentas por cobrar', icono: <HandCoins />, permiso: 'cxc.gestionar' },
+      { a: '/ventas/caja', texto: 'Caja', icono: <Wallet />, permiso: 'caja.operar' },
+      { a: '/ventas/clientes', texto: 'Clientes', icono: <Users />, permiso: 'clientes.gestionar' },
+      { a: '/ventas/emitir', texto: 'Comprobante manual', icono: <FilePlus2 />, permiso: 'comprobantes.emitir' },
     ],
   },
-  { grupo: 'Compras', items: [{ a: '/compras', texto: 'Compras', icono: <ShoppingCart />, permiso: 'compras.ver' }] },
+  {
+    grupo: 'Compras',
+    items: [
+      { a: '/compras', texto: 'Compras', icono: <ShoppingCart />, permiso: 'compras.ver' },
+      { a: '/compras/ordenes', texto: 'Órdenes de compra', icono: <ClipboardList />, permiso: 'compras.ver' },
+      { a: '/compras/proveedores', texto: 'Proveedores', icono: <Factory />, permiso: 'proveedores.gestionar|compras.ver' },
+      { a: '/compras/cuentas-por-pagar', texto: 'Cuentas por pagar', icono: <Landmark />, permiso: 'cxp.gestionar' },
+    ],
+  },
+  {
+    grupo: 'Inventario',
+    items: [
+      { a: '/inventario', texto: 'Productos y stock', icono: <Package />, permiso: 'inventario.ver' },
+      { a: '/inventario/kardex', texto: 'Kardex', icono: <ScrollText />, permiso: 'inventario.ver' },
+    ],
+  },
   {
     grupo: 'Gestión',
     items: [
-      { a: '/inventario', texto: 'Inventario', icono: <Package />, permiso: 'inventario.ver' },
-      { a: '/gestion', texto: 'Dashboard y reportes', icono: <ChartColumn />, permiso: 'reportes.ver' },
+      { a: '/gestion', texto: 'Dashboard', icono: <LayoutDashboard />, permiso: 'reportes.ver' },
+      { a: '/gestion/reportes', texto: 'Reportes', icono: <ChartColumn />, permiso: 'reportes.ver' },
+      { a: '/gestion/auditoria', texto: 'Auditoría', icono: <History />, permiso: 'auditoria.ver' },
     ],
   },
   {
@@ -50,7 +86,7 @@ const MENU: Array<{ grupo: string; items: Item[] }> = [
       { a: '/config/empresa', texto: 'Empresa', icono: <Building2 /> },
       { a: '/config/sucursales', texto: 'Sucursales', icono: <GitBranch /> },
       { a: '/config/series', texto: 'Series', icono: <Hash /> },
-      { a: '/config/usuarios', texto: 'Usuarios', icono: <Users />, permiso: 'config.usuarios' },
+      { a: '/config/usuarios', texto: 'Usuarios', icono: <UserCog />, permiso: 'config.usuarios' },
       { a: '/config/roles', texto: 'Roles y permisos', icono: <ShieldCheck />, permiso: 'config.roles' },
     ],
   },
@@ -73,6 +109,7 @@ export function Layout() {
               <NavLink
                 key={i.a}
                 to={i.a}
+                end
                 onClick={() => setMenuMovil(false)}
                 className={({ isActive }) =>
                   cn(
@@ -93,12 +130,12 @@ export function Layout() {
 
   return (
     <div className="flex h-full">
-      <aside className="no-imprimir hidden w-60 shrink-0 border-r border-slate-200 bg-white lg:block">
+      <aside className="no-imprimir hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-4 font-semibold text-slate-900">
           <span className="grid size-7 place-items-center rounded-md bg-acento-600 text-xs text-white">CV</span>
           Compras y Ventas
         </div>
-        {lateral}
+        <div className="min-h-0 flex-1 overflow-y-auto">{lateral}</div>
       </aside>
 
       {menuMovil && (

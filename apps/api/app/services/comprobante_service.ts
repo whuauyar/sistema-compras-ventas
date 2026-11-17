@@ -124,7 +124,7 @@ export class ComprobanteService {
     } catch (error) {
       if (error instanceof SunatApiError && error.esReintentable) {
         comprobante.sunatEstado = 'error_envio'
-        comprobante.sunatDescripcion = error.message
+        comprobante.sunatDescripcion = `${error.message} Se reintentará automáticamente.`
         await comprobante.save()
         await encolar(
           'sunat.enviar',

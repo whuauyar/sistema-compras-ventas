@@ -92,7 +92,8 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       usuario,
       empresas,
       empresa,
-      puede: (p) => Boolean(empresa?.permisos.includes(p)),
+      // "a|b" = basta con uno de los permisos
+      puede: (p) => p.split('|').some((alt) => Boolean(empresa?.permisos.includes(alt))),
       ingresar: async (email, password) => aplicar(await api.post<RespuestaSesion>('/auth/login', { email, password })),
       registrarse: async (datos) => aplicar(await api.post<RespuestaSesion>('/auth/registro', datos)),
       salir: async () => {

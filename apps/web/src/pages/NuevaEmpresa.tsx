@@ -34,7 +34,7 @@ export function NuevaEmpresa() {
     cambiarEmpresa(r.empresa.id)
     toast.success(`Empresa ${r.empresa.razon_social} lista.`)
     if (r.advertencias.length) setAdvertencias(r.advertencias)
-    else navegar('/ventas/comprobantes')
+    else navegar('/')
   }
 
   return (

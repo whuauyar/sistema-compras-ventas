@@ -95,7 +95,7 @@ export function Comprobantes() {
     <>
       <Encabezado
         titulo="Comprobantes"
-        descripcion="Facturas y boletas con su estado en SUNAT."
+        descripcion="Facturas, boletas, notas y guías con su estado en SUNAT."
         acciones={
           puede('comprobantes.emitir') && (
             <Link to="/ventas/emitir">
@@ -132,7 +132,7 @@ export function Comprobantes() {
               <li key={c.id} className={cn('rounded-lg border border-slate-200 bg-white p-3', c.sunat_estado === 'rechazado' && 'border-rose-200')}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium">{c.numero_completo ?? `${c.serie}-…`} <span className="text-xs font-normal text-slate-500">{TIPOS_DOCUMENTO[c.tipo_documento]}</span></p>
+                    <p className="font-medium"><Link to={`/ventas/comprobantes/${c.id}`} className="text-acento-700">{c.numero_completo ?? `${c.serie}-…`}</Link> <span className="text-xs font-normal text-slate-500">{TIPOS_DOCUMENTO[c.tipo_documento]}</span></p>
                     <p className="truncate text-sm text-slate-600">{c.cliente_razon_social}</p>
                   </div>
                   <p className="font-semibold tabular-nums">{soles(c.total, c.moneda)}</p>
@@ -161,7 +161,7 @@ export function Comprobantes() {
               {lista.data.data.map((c) => (
                 <tr key={c.id} className={cn(c.sunat_estado === 'rechazado' && 'bg-rose-50/40')}>
                   <td>
-                    <p className="font-medium text-slate-900">{c.numero_completo ?? `${c.serie}-…`}</p>
+                    <Link to={`/ventas/comprobantes/${c.id}`} className="font-medium text-acento-700 hover:underline">{c.numero_completo ?? `${c.serie}-…`}</Link>
                     <p className="text-xs text-slate-500">{TIPOS_DOCUMENTO[c.tipo_documento]}</p>
                   </td>
                   <td className="hidden whitespace-nowrap md:table-cell">{fecha(c.fecha_emision)}</td>
