@@ -26,4 +26,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   SUNAT_API_BASE_URL: Env.schema.string(),
   SUNAT_API_TIMEOUT_MS: Env.schema.number.optional(),
   CORS_ORIGINS: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring the limiter package
+  |----------------------------------------------------------
+  */
+  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
+  LIMITE_ACCESO_POR_MINUTO: Env.schema.number.optional(),
+  LIMITE_API_POR_MINUTO: Env.schema.number.optional(),
 })

@@ -17,12 +17,30 @@ docs/
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | Auth, multiempresa, perfil, roles/permisos (RBAC), auditoría, despliegue | ✅ |
-| 2 | Cliente SUNAT, alta/vínculo de empresa, sucursales, series, emisión factura/boleta, estados SUNAT, impresión 4 formatos | ✅ |
-| 3 | Inventario (kardex valorizado) + Compras + Cuentas por pagar | Pendiente |
-| 4 | POS / Ventas con stock, pagos, crédito, cuentas por cobrar | Pendiente |
-| 5 | Notas de crédito/débito, guías de remisión, anulaciones y resumen diario | Pendiente |
-| 6 | Dashboard, caja, reportes, exportaciones | Pendiente |
-| 7 | Endurecimiento | Pendiente |
+| 2 | Cliente SUNAT, alta/vínculo de empresa, sucursales, series, factura/boleta, estados SUNAT, impresión 4 formatos | ✅ |
+| 3 | Inventario con kardex valorizado (costo promedio), ajustes, transferencias, compras, órdenes de compra, cuentas por pagar | ✅ |
+| 4 | POS con stock, pagos mixtos y vuelto, crédito, caja (apertura/arqueo/cierre), cuentas por cobrar | ✅ |
+| 5 | Notas de crédito/débito, guía de remisión remitente, anulación (baja y resumen diario) | ✅ |
+| 6 | Dashboard, reportes (ventas, compras, utilidad, inventario, kardex, registro de ventas), exportación CSV | ✅ |
+| 7 | Límite de intentos de acceso, cabeceras de seguridad, carga diferida del frontend, cobertura | ✅ |
+
+**Pendiente de verificar contra la API real (beta):** todo está probado con un simulador. Los formatos que se infirieron del código de la API y conviene confirmar en la primera prueba son: respuesta de `GET /anulaciones/{id}/estado` y `GET /resumenes/{id}/estado`, `POST /series` (`creadas[]`) y el estado de las guías.
+
+**Fuera de alcance por ahora:** cotizaciones, notas de venta internas, guía transportista (31), retenciones/percepciones, SIRE, ventas en USD desde el POS.
+
+## Módulos
+
+- **Ventas:** POS (lector de barras, F2/F4/F9, descuentos con permiso), ventas, comprobantes con semáforo SUNAT, notas de crédito/débito, guías, anulaciones, cuentas por cobrar, caja, clientes.
+- **Compras:** compras (PEN/USD), órdenes de compra (borrador → aprobada → recibida), proveedores, cuentas por pagar.
+- **Inventario:** productos y servicios, stock por almacén, ajustes, transferencias, kardex valorizado.
+- **Gestión:** dashboard con alertas SUNAT, reportes con exportación a Excel (CSV), auditoría.
+- **Configuración:** empresa, sucursales, series, usuarios, roles y permisos (matriz), perfil.
+
+### Reglas importantes
+- La venta valida reglas fiscales **antes** de mover stock; si SUNAT la rechaza por validación, la venta se revierte sola (stock y cuentas).
+- Una NC repone stock **solo cuando SUNAT la acepta** (no al emitirla). Una anulación aceptada revierte la venta.
+- Boletas se anulan por resumen diario; facturas y notas por comunicación de baja; máximo 7 días.
+- Las guías se bloquean si la empresa no tiene credenciales GRE (la API las aceptaría y luego SUNAT las rechazaría).
 
 ## Desarrollo local
 
@@ -55,8 +73,8 @@ Con el simulador, cualquier api_key/api_secret sirve para "Vincular empresa". Un
 ```bash
 cd apps/api
 cp .env.test.example .env.test   # base de datos de pruebas aparte
-npm test                  # 83 pruebas (unitarias + funcionales)
-npm run test:cobertura    # c8: ~99.6 % líneas, ~90 % ramas
+npm test                  # 139 pruebas (unitarias + funcionales)
+npm run test:cobertura    # c8: 99.9 % líneas, 92 % ramas
 npm run lint && npm run typecheck
 ```
 
@@ -72,6 +90,8 @@ La API SUNAT se reemplaza en las pruebas por `SunatFalsa` (`tests/helpers.ts`): 
 | `SUNAT_API_BASE_URL` | Base de la API de facturación: `https://api-sunat-production-6c5ea01b.up.railway.app/api/v1` |
 | `SUNAT_API_TIMEOUT_MS` | Timeout por petición (defecto 45000) |
 | `CORS_ORIGINS` | Dominio(s) del frontend, separados por coma |
+| `LIMITER_STORE` | `database` en producción (tabla `rate_limits`) |
+| `LIMITE_ACCESO_POR_MINUTO` / `LIMITE_API_POR_MINUTO` | Intentos de login por cuenta+IP (defecto 10, bloqueo 15 min) y solicitudes por usuario (defecto 300) |
 
 Frontend: `VITE_API_URL` (URL pública del backend; se fija **al compilar**).
 
@@ -98,8 +118,16 @@ Luego poner el dominio de `web` en `CORS_ORIGINS` del `api`.
 - **RBAC por empresa**: un usuario puede ser Administrador en una empresa y Vendedor en otra. El rol Administrador no se puede borrar, renombrar ni recortar, y la empresa nunca queda sin un Administrador activo.
 - **Formato de impresión**: usuario > caja > sucursal > empresa, o el elegido en el menú.
 
-## API (resumen)
+## API (resumen, `/api/v1`)
 
-Públicas: `POST /auth/registro`, `POST /auth/login`.
-Autenticado: `GET /auth/yo`, `POST /auth/logout`, `GET|PUT /perfil`, `PUT /perfil/password`, `POST /empresas/registrar` (multipart), `POST /empresas/vincular`.
-Con empresa activa (`X-Empresa-Id`) y permiso: `empresa`, `sucursales`, `series`, `permisos`, `roles` (+ `clonar`), `usuarios`, `comprobantes` (+ `resumen-estados`, `reconsultar`, `reenviar`, `pdf?formato=`, `xml`, `cdr`), `consultas/documento`, `auditoria`.
+| Área | Rutas |
+|---|---|
+| Acceso | `POST auth/registro`, `POST auth/login`, `GET auth/yo`, `POST auth/logout`, `GET/PUT perfil`, `PUT perfil/password` |
+| Empresas | `POST empresas/registrar` (multipart), `POST empresas/vincular`, `GET/PUT empresa`, `sucursales`, `series`, `usuarios`, `roles` (+`clonar`), `permisos` |
+| Inventario | `categorias`, `productos`, `almacenes`, `inventario/kardex`, `inventario/ajustes`, `inventario/transferencias` |
+| Compras | `proveedores`, `ordenes-compra` (+`aprobar`, `anular`), `compras` (+`anular`), `cuentas-por-pagar` (+`pagos`) |
+| Ventas | `clientes`, `ventas`, `cuentas-por-cobrar` (+`cobros`), `cajas`, `cajas/aperturas` (+`movimientos`, `cerrar`) |
+| Comprobantes | `comprobantes` (+`resumen-estados`, `reconsultar`, `reenviar`, `pdf?formato=`, `xml`, `cdr`, `relacionados`, `nota-credito`, `nota-debito`), `guias`, `anulaciones` (+`consultar`), `documentos/motivos`, `consultas/documento` |
+| Gestión | `dashboard`, `reportes/{ventas,compras,utilidad,inventario,kardex,registro-ventas}?formato=csv`, `auditoria` |
+
+Todas las rutas con empresa requieren la cabecera `X-Empresa-Id` y el permiso correspondiente del rol.

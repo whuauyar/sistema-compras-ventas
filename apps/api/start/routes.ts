@@ -10,6 +10,7 @@
 import router from '@adonisjs/core/services/router'
 import db from '@adonisjs/lucid/services/db'
 import { middleware } from '#start/kernel'
+import { limiteAcceso, limiteApi } from '#start/limiter'
 
 const AuthController = () => import('#controllers/auth_controller')
 const PerfilController = () => import('#controllers/perfil_controller')
@@ -43,8 +44,8 @@ router.get('/health', async ({ response }) => {
 router
   .group(() => {
     // Públicas
-    router.post('auth/registro', [AuthController, 'registro'])
-    router.post('auth/login', [AuthController, 'login'])
+    router.post('auth/registro', [AuthController, 'registro']).use(limiteAcceso)
+    router.post('auth/login', [AuthController, 'login']).use(limiteAcceso)
 
     // Autenticado, sin empresa activa
     router
@@ -215,6 +216,6 @@ router
         router.get('dashboard', [ReportesController, 'dashboard']).use(p('reportes.ver'))
         router.get('reportes/:tipo', [ReportesController, 'show']).use(p('reportes.ver'))
       })
-      .use([middleware.auth(), middleware.empresa()])
+      .use([middleware.auth(), limiteApi, middleware.empresa()])
   })
   .prefix('/api/v1')

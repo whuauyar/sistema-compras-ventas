@@ -17,3 +17,27 @@ test.group('Salud y configuración', () => {
     SunatGateway.usar(null)
   })
 })
+
+test.group('Endurecimiento', () => {
+  test('cabeceras de seguridad en todas las respuestas', async ({ client }) => {
+    const r = await client.get('/health')
+    r.assertHeader('x-content-type-options', 'nosniff')
+    r.assertHeader('x-frame-options', 'DENY')
+    r.assertHeader('referrer-policy', 'no-referrer')
+  })
+
+  test('bloquea el login tras demasiados intentos para la misma cuenta', async ({ client, assert }) => {
+    const email = `fuerza-bruta-${Date.now()}@prueba.pe`
+    for (let i = 0; i < 10; i++) {
+      const r = await client.post('/api/v1/auth/login').json({ email, password: 'mala' })
+      r.assertStatus(400)
+    }
+    const bloqueado = await client.post('/api/v1/auth/login').json({ email, password: 'mala' })
+    bloqueado.assertStatus(429)
+    assert.include(bloqueado.body().mensaje, 'Demasiados intentos')
+    assert.isAbove(Number(bloqueado.header('retry-after')), 0)
+    // Otra cuenta desde la misma IP no queda bloqueada
+    const otra = await client.post('/api/v1/auth/login').json({ email: `otra-${email}`, password: 'mala' })
+    otra.assertStatus(400)
+  })
+})
