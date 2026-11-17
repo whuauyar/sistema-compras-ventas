@@ -677,6 +677,52 @@ test.group('SuperAdmin: creación desde variables de entorno', (group) => {
     assert.equal(u.password, hashAntes)
   })
 
+  test('reinicio controlado: aplica la clave nueva y cierra sesiones', async ({ assert }) => {
+    const u = await crearUsuario({ email: 'reinicio@prueba.pe' })
+    await Usuario.accessTokens.create(u)
+    assert.equal(
+      await asegurarSuperadmin({
+        email: 'reinicio@prueba.pe',
+        password: 'clave-nueva-muy-larga',
+        reset: true,
+      }),
+      'clave_restablecida'
+    )
+    const verificado = await Usuario.verifyCredentials(
+      'reinicio@prueba.pe',
+      'clave-nueva-muy-larga'
+    )
+    assert.isTrue(verificado.esSuperadmin)
+    assert.lengthOf(await Usuario.accessTokens.all(verificado), 0)
+  })
+
+  test('reinicio sin clave robusta no toca la cuenta', async ({ assert }) => {
+    const u = await crearUsuario({ email: 'reinicio-corto@prueba.pe' })
+    const hashAntes = u.password
+    assert.equal(
+      await asegurarSuperadmin({
+        email: 'reinicio-corto@prueba.pe',
+        password: 'corta',
+        reset: true,
+      }),
+      'sin_password'
+    )
+    await u.refresh()
+    assert.equal(u.password, hashAntes)
+    assert.isFalse(u.esSuperadmin)
+  })
+
+  test('reinicio de un correo inexistente simplemente lo crea', async ({ assert }) => {
+    assert.equal(
+      await asegurarSuperadmin({
+        email: 'nuevo-reset@plataforma.pe',
+        password: 'una-clave-muy-larga',
+        reset: true,
+      }),
+      'creado'
+    )
+  })
+
   test('el seeder es idempotente y registra el resultado', async ({ assert }) => {
     const seeder = new MainSeeder(db.connection())
     await seeder.run()

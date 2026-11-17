@@ -16,11 +16,14 @@ export default class MainSeeder extends BaseSeeder {
       email: env.get('SUPERADMIN_EMAIL'),
       password: env.get('SUPERADMIN_PASSWORD'),
       nombre: env.get('SUPERADMIN_NOMBRE'),
+      reset: env.get('SUPERADMIN_RESET') === true,
     })
     if (resultado === 'sin_password') {
       logger.warn(
         'SUPERADMIN_PASSWORD falta o tiene menos de 12 caracteres: no se creó el SuperAdmin.'
       )
+    } else if (resultado === 'clave_restablecida') {
+      logger.warn('SuperAdmin: clave restablecida. Quite SUPERADMIN_RESET para que no se repita.')
     } else if (resultado !== 'omitido') {
       logger.info(`SuperAdmin: ${resultado}`)
     }

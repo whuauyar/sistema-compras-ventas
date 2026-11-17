@@ -111,6 +111,7 @@ La API SUNAT se reemplaza en las pruebas por `SunatFalsa` (`tests/helpers.ts`): 
 | `LIMITER_STORE` | `database` en producción (tabla `rate_limits`) |
 | `LIMITE_ACCESO_POR_MINUTO` / `LIMITE_API_POR_MINUTO` | Intentos de login por cuenta+IP (defecto 10, bloqueo 15 min) y solicitudes por usuario (defecto 300) |
 | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` / `SUPERADMIN_NOMBRE` | SuperAdmin que el seeder crea si no existe (clave ≥ 12). Después del primer despliegue puede borrar `SUPERADMIN_PASSWORD` |
+| `SUPERADMIN_RESET` | `1` = en el próximo despliegue aplica `SUPERADMIN_PASSWORD` a la cuenta existente y cierra sus sesiones. Quitarla después (o poner `0`) |
 
 Frontend: `VITE_API_URL` (URL pública del backend; se fija **al compilar**).
 

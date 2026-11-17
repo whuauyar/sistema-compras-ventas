@@ -31,6 +31,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   SUPERADMIN_EMAIL: Env.schema.string.optional(),
   SUPERADMIN_PASSWORD: Env.schema.string.optional(),
   SUPERADMIN_NOMBRE: Env.schema.string.optional(),
+  /* 1/true: en el próximo despliegue aplica SUPERADMIN_PASSWORD a una cuenta existente */
+  SUPERADMIN_RESET: Env.schema.boolean.optional(),
 
   /*
   |----------------------------------------------------------
