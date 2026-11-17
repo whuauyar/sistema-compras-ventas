@@ -69,7 +69,7 @@ La API SUNAT se reemplaza en las pruebas por `SunatFalsa` (`tests/helpers.ts`): 
 | `APP_KEY` | Firma de Adonis (`node ace generate:key`) |
 | `DATABASE_URL` | La inyecta Railway; tiene prioridad sobre `DB_*` |
 | `ENCRYPTION_KEY` | Cifra api_key/api_secret de cada empresa. **No cambiarla** sin re-cifrar: las credenciales guardadas dejarían de leerse |
-| `SUNAT_API_BASE_URL` | Base de la API de facturación, terminada en `/api/v1` |
+| `SUNAT_API_BASE_URL` | Base de la API de facturación: `https://api-sunat-production-6c5ea01b.up.railway.app/api/v1` |
 | `SUNAT_API_TIMEOUT_MS` | Timeout por petición (defecto 45000) |
 | `CORS_ORIGINS` | Dominio(s) del frontend, separados por coma |
 
