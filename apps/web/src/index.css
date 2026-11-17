@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+/* Paleta sobria: un acento + neutros. Sin degradados ni sombras fuertes. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-acento-50: #eef2ff;
+  --color-acento-100: #e0e7ff;
+  --color-acento-600: #4f46e5;
+  --color-acento-700: #4338ca;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+}
