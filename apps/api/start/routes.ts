@@ -26,6 +26,8 @@ const ClientesController = () => import('#controllers/clientes_controller')
 const ProveedoresController = () => import('#controllers/proveedores_controller')
 const InventarioController = () => import('#controllers/inventario_controller')
 const ComprasController = () => import('#controllers/compras_controller')
+const VentasController = () => import('#controllers/ventas_controller')
+const CajaController = () => import('#controllers/caja_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -164,6 +166,29 @@ router
         router
           .post('cuentas-por-pagar/:id/pagos', [ComprasController, 'pagar'])
           .use(p('cxp.gestionar'))
+
+        // ---------------- Fase 4: POS / ventas, caja y cuentas por cobrar
+        router.get('ventas', [VentasController, 'index']).use(p('ventas.ver'))
+        router.get('ventas/:id', [VentasController, 'show']).use(p('ventas.ver'))
+        router
+          .post('ventas', [VentasController, 'store'])
+          .use(p('ventas.crear', 'comprobantes.emitir'))
+        router
+          .get('cuentas-por-cobrar', [VentasController, 'cuentasPorCobrar'])
+          .use(p('cxc.gestionar'))
+        router
+          .post('cuentas-por-cobrar/:id/cobros', [VentasController, 'cobrar'])
+          .use(p('cxc.gestionar'))
+
+        router.get('cajas', [CajaController, 'index']).use(p('caja.operar|ventas.crear'))
+        router.post('cajas/aperturas', [CajaController, 'abrir']).use(p('caja.operar'))
+        router.get('cajas/aperturas', [CajaController, 'historial']).use(p('caja.operar'))
+        router.get('cajas/aperturas/:id', [CajaController, 'show']).use(p('caja.operar'))
+        router
+          .post('cajas/aperturas/:id/movimientos', [CajaController, 'movimiento'])
+          .use(p('caja.operar'))
+        router.post('cajas/aperturas/:id/cerrar', [CajaController, 'cerrar']).use(p('caja.operar'))
+        /*FASE5*/
       })
       .use([middleware.auth(), middleware.empresa()])
   })

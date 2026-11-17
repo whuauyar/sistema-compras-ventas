@@ -40,18 +40,17 @@ export class ComprobanteService {
    * 3) envía a la API con Idempotency-Key = uuid, 4) refleja el estado SUNAT devuelto.
    * Ante caída de red/5xx el comprobante queda en `error_envio` y se reintenta en segundo plano.
    */
-  async emitirVenta(
-    empresa: Empresa,
-    usuarioId: number,
-    datos: DatosEmisionVenta
-  ): Promise<Comprobante> {
+  /**
+   * Valida serie y reglas fiscales SIN efectos (ni BD ni API). Lo usa la venta antes de mover stock,
+   * para que un error fiscal no deje una venta a medias.
+   */
+  async validarVenta(empresa: Empresa, datos: DatosEmisionVenta) {
     const serie = await this.resolverSerie(
       empresa.id,
       datos.tipoDocumento,
       datos.serie,
       datos.sucursalId
     )
-
     const errores = validarComprobanteVenta({
       tipoDocumento: datos.tipoDocumento,
       serie: serie.serie,
@@ -63,6 +62,15 @@ export class ComprobanteService {
       igvTasa: empresa.igvTasa,
     })
     if (errores.length > 0) throw new ReglaNegocioError('El comprobante tiene errores.', errores)
+    return { serie, totales: calcularTotales(datos.items, empresa.igvTasa) }
+  }
+
+  async emitirVenta(
+    empresa: Empresa,
+    usuarioId: number,
+    datos: DatosEmisionVenta
+  ): Promise<Comprobante> {
+    const { serie } = await this.validarVenta(empresa, datos)
 
     const totales = calcularTotales(datos.items, empresa.igvTasa)
     const fechaEmision = datos.fechaEmision ?? DateTime.now().setZone('America/Lima').toISODate()!
@@ -192,7 +200,7 @@ export class ComprobanteService {
     await comprobante.save()
   }
 
-  private async resolverSerie(
+  async resolverSerie(
     empresaId: number,
     tipo: TipoDocumento,
     serie?: string,

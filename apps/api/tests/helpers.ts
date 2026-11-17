@@ -257,3 +257,19 @@ export async function datosInventario(empresa: Empresa) {
   })
   return { almacen, caja, producto, servicio, proveedor, cliente }
 }
+
+/** N respuestas de emisión con ids/correlativos distintos (para varias ventas en una prueba). */
+export function emisiones(n: number, serie = 'B001', tipo = '03') {
+  return Array.from({ length: n }, (_, i) =>
+    exito(
+      comprobanteApi({
+        id: 600 + i,
+        tipo_documento: tipo,
+        serie,
+        correlativo: i + 1,
+        numero_completo: `${serie}-${i + 1}`,
+      }),
+      201
+    )
+  )
+}
