@@ -6,7 +6,11 @@ import Serie from '#models/serie'
 import Sucursal from '#models/sucursal'
 import { SunatGateway } from '#integrations/sunat/sunat_service'
 import { limpiarCacheUbigeo } from '#controllers/catalogo_controller'
-import { ConfiguracionSunatService, sinSecretos } from '#services/configuracion_sunat_service'
+import {
+  ConfiguracionSunatService,
+  sinSecretos,
+  tasaComoFraccion,
+} from '#services/configuracion_sunat_service'
 import { SunatFalsa, asignarRol, crearEmpresa, crearUsuario, exito } from '#tests/helpers'
 
 /** PNG real de 1×1: el validador detecta el tipo por el contenido. */
@@ -263,6 +267,33 @@ test.group('Configuración SUNAT: datos de la empresa', (group) => {
       .headers(h(empresa))
       .json({ razon_social: 'HACK SAC' })
     cambiar.assertStatus(403)
+  })
+
+  test('la tasa de IGV en porcentaje (como la manda la API real) se guarda como fracción', async ({
+    client,
+    assert,
+  }) => {
+    new SunatFalsa()
+      .cuando('GET /empresa', exito(empresaApi({ tasa_igv_vigente: 18 })))
+      .cuando('GET /sunat/estado', estadoSunat)
+      .instalar()
+    const { admin, empresa } = await preparar()
+    const r = await client.get('/api/v1/empresa/sunat').loginAs(admin).headers(h(empresa))
+    r.assertStatus(200)
+    assert.equal(r.body().remota.tasa_igv_vigente, 0.18)
+    await empresa.refresh()
+    assert.equal(Number(empresa.igvTasa), 0.18)
+  })
+
+  test('tasaComoFraccion normaliza porcentajes y descarta basura', ({ assert }) => {
+    assert.equal(tasaComoFraccion(18), 0.18)
+    assert.equal(tasaComoFraccion(10.5), 0.105)
+    assert.equal(tasaComoFraccion('18.00'), 0.18)
+    assert.equal(tasaComoFraccion(0.18), 0.18)
+    assert.equal(tasaComoFraccion(0), 0)
+    assert.isNull(tasaComoFraccion(null))
+    assert.isNull(tasaComoFraccion('abc'))
+    assert.isNull(tasaComoFraccion(-1))
   })
 
   test('sinSecretos enmascara solo las claves', ({ assert }) => {

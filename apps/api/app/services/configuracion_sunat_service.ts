@@ -44,6 +44,16 @@ export interface CambiosConfiguracion {
   mensaje_promocional?: string | null
 }
 
+/**
+ * La API devuelve la tasa de IGV como porcentaje (18, 10.5); aquí se guarda como fracción (0.18).
+ * Acepta ambos por si la API cambia de criterio. Devuelve null si no es un número válido.
+ */
+export function tasaComoFraccion(valor: unknown): number | null {
+  const n = typeof valor === 'string' ? Number(valor) : valor
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return null
+  return n > 1 ? Math.round((n / 100) * 10_000) / 10_000 : n
+}
+
 /** Campos secretos: nunca se devuelven ni se guardan en la auditoría. */
 const SECRETOS = ['sol_pass', 'client_secret'] as const
 
@@ -161,8 +171,7 @@ export class ConfiguracionSunatService {
       entorno: remota.entorno === 'production' ? 'production' : 'beta',
       greConfigurada: Boolean(remota.client_id && remota.tiene_client_secret),
       logoUrl: remota.logo_url ?? empresa.logoUrl,
-      igvTasa:
-        typeof remota.tasa_igv_vigente === 'number' ? remota.tasa_igv_vigente : empresa.igvTasa,
+      igvTasa: tasaComoFraccion(remota.tasa_igv_vigente) ?? empresa.igvTasa,
     })
     await empresa.save()
   }
@@ -181,7 +190,7 @@ export class ConfiguracionSunatService {
       tax_regime: remota.tax_regime ?? 'general',
       nrus_categoria: remota.nrus_categoria ?? null,
       igv_rate_override: remota.igv_rate_override ?? null,
-      tasa_igv_vigente: remota.tasa_igv_vigente ?? null,
+      tasa_igv_vigente: tasaComoFraccion(remota.tasa_igv_vigente),
       entorno: remota.entorno ?? 'beta',
       sol_user: remota.sol_user ?? null,
       tiene_sol_pass: Boolean(remota.tiene_sol_pass),
