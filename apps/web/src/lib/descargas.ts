@@ -1,8 +1,8 @@
 import { toast } from 'sonner'
 import { api, mensajeError } from './api'
 
-/** Descarga autenticada de un archivo (CSV, XML…) desde el backend. */
-export async function descargarCsv(ruta: string) {
+/** Descarga autenticada de un archivo (CSV, XML, CDR…) desde el backend. */
+export async function descargarArchivo(ruta: string) {
   try {
     const { blob, nombre } = await api.blob(ruta)
     const a = document.createElement('a')

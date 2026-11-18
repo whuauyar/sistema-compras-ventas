@@ -9,6 +9,7 @@ import { TIPOS_DOCUMENTO, type EstadoSunat } from '@/lib/sunat'
 import { fecha, soles } from '@/lib/utils'
 import { EstadoSunatBadge } from '@/components/EstadoSunat'
 import { MenuImpresion } from '@/components/MenuImpresion'
+import { ArchivosSunat } from '@/components/ArchivosSunat'
 import { Boton, Campo, Cargando, Dialogo, Encabezado, Entrada, Selector, Tabla, Tarjeta } from '@/components/ui'
 import { FormGuia } from './Guias'
 
@@ -107,8 +108,9 @@ export function ComprobanteDetalle() {
         <div className="flex flex-col gap-4">
           <Tarjeta titulo="Estado SUNAT">
             <EstadoSunatBadge estado={d.sunat_estado} codigo={d.sunat_codigo} descripcion={d.sunat_descripcion} notas={d.sunat_notas} />
-            {d.sunat_codigo && <p className="mt-2 text-sm text-slate-600">Código {d.sunat_codigo}</p>}
+            {d.sunat_codigo && d.sunat_codigo !== '0' && <p className="mt-2 text-sm text-slate-600">Código {d.sunat_codigo}</p>}
             {d.sunat_descripcion && <p className="mt-1 text-sm text-slate-600">{d.sunat_descripcion}</p>}
+            <ArchivosSunat className="mt-3" id={d.id} registrado={Boolean(d.sunat_api_id)} estado={d.sunat_estado} />
             {d.des_motivo && <p className="mt-2 text-sm">Motivo: {d.des_motivo}</p>}
             {d.doc_referencia_id && <Link className="mt-2 block text-sm text-acento-700 hover:underline" to={`/ventas/comprobantes/${d.doc_referencia_id}`}>Ver documento de origen</Link>}
           </Tarjeta>

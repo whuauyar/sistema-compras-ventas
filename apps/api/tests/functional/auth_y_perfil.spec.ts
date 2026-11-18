@@ -30,6 +30,7 @@ test.group('Autenticación y perfil', (group) => {
       .post('/api/v1/auth/login')
       .json({ email: 'mal@prueba.pe', password: 'otra' })
     r.assertStatus(400)
+    r.assertBodyContains({ mensaje: 'Correo o contraseña incorrectos.' })
   })
 
   test('usuario desactivado no puede ingresar', async ({ client }) => {

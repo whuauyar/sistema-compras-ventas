@@ -9,6 +9,7 @@ import { ESTADOS, TIPOS_DOCUMENTO, type EstadoSunat } from '@/lib/sunat'
 import { cn, fecha, soles } from '@/lib/utils'
 import { EstadoSunatBadge } from '@/components/EstadoSunat'
 import { MenuImpresion } from '@/components/MenuImpresion'
+import { ArchivosSunat } from '@/components/ArchivosSunat'
 import { Boton, Cargando, Encabezado, Entrada, Tabla, Vacio } from '@/components/ui'
 
 export interface ComprobanteFila {
@@ -72,7 +73,7 @@ export function Comprobantes() {
   })
 
   const acciones = (c: ComprobanteFila) => (
-    <div className="flex justify-end gap-1.5">
+    <div className="flex flex-wrap justify-end gap-1.5">
       {['pendiente', 'enviado', 'error_envio', 'anulacion_en_proceso'].includes(c.sunat_estado) && (
         <Boton variante="fantasma" tamano="sm" title="Consultar estado en SUNAT" cargando={accion.isPending && accion.variables?.id === c.id} onClick={() => accion.mutate({ id: c.id, tipo: 'reconsultar' })}>
           <RefreshCw className="size-3.5" />
@@ -83,6 +84,7 @@ export function Comprobantes() {
           <Send className="size-3.5" />
         </Boton>
       )}
+      <ArchivosSunat id={c.id} registrado={Boolean(c.sunat_api_id)} estado={c.sunat_estado} compacto />
       <MenuImpresion id={c.id} deshabilitado={!c.sunat_api_id} />
     </div>
   )
@@ -137,10 +139,10 @@ export function Comprobantes() {
                   </div>
                   <p className="font-semibold tabular-nums">{soles(c.total, c.moneda)}</p>
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="mt-2">
                   <EstadoSunatBadge estado={c.sunat_estado} codigo={c.sunat_codigo} descripcion={c.sunat_descripcion} notas={c.sunat_notas} />
-                  {acciones(c)}
                 </div>
+                <div className="mt-2">{acciones(c)}</div>
                 {c.sunat_estado === 'rechazado' && c.sunat_descripcion && <p className="mt-1 text-xs text-rose-700">{c.sunat_descripcion}</p>}
               </li>
             ))}
@@ -172,7 +174,8 @@ export function Comprobantes() {
                   <td className="whitespace-nowrap text-right tabular-nums">{soles(c.total, c.moneda)}</td>
                   <td>
                     <EstadoSunatBadge estado={c.sunat_estado} codigo={c.sunat_codigo} descripcion={c.sunat_descripcion} notas={c.sunat_notas} />
-                    {c.sunat_estado === 'rechazado' && c.sunat_descripcion && <p className="mt-1 max-w-[16rem] text-xs text-rose-700">{c.sunat_descripcion}</p>}
+                    {c.sunat_codigo && c.sunat_codigo !== '0' && c.sunat_estado !== 'rechazado' && <p className="mt-1 text-xs text-slate-500">Código {c.sunat_codigo}</p>}
+                    {c.sunat_estado === 'rechazado' && c.sunat_descripcion && <p className="mt-1 max-w-[16rem] text-xs text-rose-700">{c.sunat_codigo ? `${c.sunat_codigo}: ` : ''}{c.sunat_descripcion}</p>}
                   </td>
                   <td>{acciones(c)}</td>
                 </tr>

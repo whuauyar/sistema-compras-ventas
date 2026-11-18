@@ -2,6 +2,7 @@ import app from '@adonisjs/core/services/app'
 import { HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { errors } from '@vinejs/vine'
 import { errors as erroresLimite } from '@adonisjs/limiter'
+import { errors as erroresAuth } from '@adonisjs/auth'
 import { SunatApiError } from '#integrations/sunat/sunat_errors'
 import { ReglaNegocioError } from '#exceptions/regla_negocio_error'
 
@@ -28,6 +29,9 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         mensaje: lista[0]?.message ?? 'Datos inválidos.',
         errores: lista.map((e) => ({ campo: e.field, mensaje: e.message })),
       })
+    }
+    if (error instanceof erroresAuth.E_INVALID_CREDENTIALS) {
+      return ctx.response.status(400).send({ mensaje: 'Correo o contraseña incorrectos.' })
     }
     if (error instanceof erroresLimite.E_TOO_MANY_REQUESTS) {
       const reintentarEn = error.response.availableIn

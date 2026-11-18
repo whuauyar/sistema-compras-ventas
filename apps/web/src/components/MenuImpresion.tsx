@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, FileCode2, FileArchive, Printer } from 'lucide-react'
+import { ChevronDown, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, mensajeError } from '@/lib/api'
 import { FORMATOS, type Formato } from '@/lib/sunat'
@@ -16,19 +16,6 @@ async function abrirPdf(id: number, formato?: Formato) {
     else window.location.href = url
   } catch (e) {
     ventana?.close()
-    toast.error(mensajeError(e))
-  }
-}
-
-async function descargar(id: number, recurso: 'xml' | 'cdr') {
-  try {
-    const { blob, nombre } = await api.blob(`/comprobantes/${id}/${recurso}`)
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = nombre
-    a.click()
-    URL.revokeObjectURL(a.href)
-  } catch (e) {
     toast.error(mensajeError(e))
   }
 }
@@ -58,13 +45,6 @@ export function MenuImpresion({ id, deshabilitado }: { id: number; deshabilitado
               <Printer className="size-3.5 text-slate-400" /> {f.etiqueta}
             </button>
           ))}
-          <div className="my-1 border-t border-slate-100" />
-          <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-slate-50" onClick={() => (setAbierto(false), descargar(id, 'xml'))}>
-            <FileCode2 className="size-3.5 text-slate-400" /> Descargar XML
-          </button>
-          <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-slate-50" onClick={() => (setAbierto(false), descargar(id, 'cdr'))}>
-            <FileArchive className="size-3.5 text-slate-400" /> Descargar CDR
-          </button>
         </div>
       )}
     </div>

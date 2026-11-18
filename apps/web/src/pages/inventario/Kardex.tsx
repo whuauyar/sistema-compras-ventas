@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { api } from '@/lib/api'
-import { descargarCsv } from '@/lib/descargas'
+import { descargarArchivo } from '@/lib/descargas'
 import type { Almacen, Producto } from '@/lib/tipos'
 import { inicioMes, hoy } from '@/lib/tipos'
 import { soles } from '@/lib/utils'
@@ -48,7 +48,7 @@ export function Kardex() {
       <Encabezado
         titulo="Kardex valorizado"
         descripcion="Movimientos con costo promedio ponderado."
-        acciones={producto && <Boton variante="secundario" onClick={() => descargarCsv(`/reportes/kardex?${params}&formato=csv`)}><Download className="size-4" /> Exportar CSV</Boton>}
+        acciones={producto && <Boton variante="secundario" onClick={() => descargarArchivo(`/reportes/kardex?${params}&formato=csv`)}><Download className="size-4" /> Exportar CSV</Boton>}
       />
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_14rem_auto]">
         <BuscadorProducto onElegir={setProducto} placeholder={producto ? `${producto.codigo} · ${producto.nombre}` : 'Elegir producto…'} />

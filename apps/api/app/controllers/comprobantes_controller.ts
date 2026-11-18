@@ -8,6 +8,7 @@ import Comprobante from '#models/comprobante'
 import Sucursal from '#models/sucursal'
 import { ComprobanteService } from '#services/comprobante_service'
 import { SunatGateway } from '#integrations/sunat/sunat_service'
+import { SunatApiError } from '#integrations/sunat/sunat_errors'
 import { auditarCtx } from '#services/auditoria_service'
 import { resolverFormatoImpresion } from '#domain/reglas_comprobante'
 import type { FormatoImpresion } from '#constants/sunat'
@@ -136,13 +137,27 @@ export default class ComprobantesController {
     if (!comprobante.sunatApiId) {
       return ctx.response.conflict({ mensaje: 'El comprobante aún no fue registrado en SUNAT.' })
     }
-    const respuesta = await SunatGateway.cliente().descargar(
-      ctx.empresa.credenciales(),
-      comprobante.tipoDocumento,
-      comprobante.sunatApiId,
-      recurso,
-      formato
-    )
+    let respuesta: Response
+    try {
+      respuesta = await SunatGateway.cliente().descargar(
+        ctx.empresa.credenciales(),
+        comprobante.tipoDocumento,
+        comprobante.sunatApiId,
+        recurso,
+        formato
+      )
+    } catch (error) {
+      // La API responde 404 cuando SUNAT todavía no devolvió el archivo (típico del CDR)
+      if (error instanceof SunatApiError && error.status === 404) {
+        return ctx.response.notFound({
+          mensaje:
+            recurso === 'cdr'
+              ? 'SUNAT aún no emitió el CDR de este comprobante. Consulte su estado e intente luego.'
+              : 'El archivo aún no está disponible en el servicio de facturación.',
+        })
+      }
+      throw error
+    }
     const extension = recurso === 'pdf' ? 'pdf' : recurso === 'xml' ? 'xml' : 'zip'
     const nombre = `${ctx.empresa.ruc}-${comprobante.tipoDocumento}-${comprobante.numeroCompleto ?? comprobante.id}${formato ? `-${formato}` : ''}.${extension}`
     ctx.response.header(

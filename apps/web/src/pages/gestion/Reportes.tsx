@@ -6,7 +6,7 @@ import { hoy, inicioMes, type Almacen, type Producto } from '@/lib/tipos'
 import { soles } from '@/lib/utils'
 import { BuscadorProducto, Rango } from '@/components/comunes'
 import { Boton, Cargando, Encabezado, Selector, Tabla, Vacio } from '@/components/ui'
-import { descargarCsv } from '@/lib/descargas'
+import { descargarArchivo } from '@/lib/descargas'
 
 interface Reporte {
   titulo: string
@@ -45,7 +45,7 @@ export function Reportes() {
 
   return (
     <>
-      <Encabezado titulo="Reportes" acciones={listo && <Boton variante="secundario" onClick={() => descargarCsv(`/reportes/${tipo}?${params}&formato=csv`)}><Download className="size-4" /> Exportar a Excel (CSV)</Boton>} />
+      <Encabezado titulo="Reportes" acciones={listo && <Boton variante="secundario" onClick={() => descargarArchivo(`/reportes/${tipo}?${params}&formato=csv`)}><Download className="size-4" /> Exportar a Excel (CSV)</Boton>} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Selector className="w-56" value={tipo} onChange={(e) => (setTipo(e.target.value), setAgrupar('dia'))} aria-label="Reporte">
           {Object.entries(REPORTES).map(([k, r]) => <option key={k} value={k}>{r.nombre}</option>)}

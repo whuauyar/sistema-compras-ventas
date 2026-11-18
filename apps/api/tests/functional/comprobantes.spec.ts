@@ -461,6 +461,57 @@ test.group('Comprobantes: impresión y descargas', (group) => {
     assert.include(cdr.header('content-disposition'), '.zip')
   })
 
+  test('CDR o XML aún no disponibles en la API: mensaje claro con 404', async ({
+    client,
+    assert,
+  }) => {
+    const falsa = new SunatFalsa()
+      .cuando('GET /boletas/501/cdr', {
+        status: 404,
+        cuerpo: { estado: 'error', mensaje: 'Not found' },
+      })
+      .cuando('GET /boletas/501/xml', {
+        status: 404,
+        cuerpo: { estado: 'error', mensaje: 'Not found' },
+      })
+    const { admin, empresa } = await emitida(falsa)
+    const c = await client
+      .post('/api/v1/comprobantes')
+      .loginAs(admin)
+      .headers(h(empresa))
+      .json(boletaValida)
+    const cdr = await client
+      .get(`/api/v1/comprobantes/${c.body().id}/cdr`)
+      .loginAs(admin)
+      .headers(h(empresa))
+    cdr.assertStatus(404)
+    assert.include(cdr.body().mensaje, 'SUNAT aún no emitió el CDR')
+    const xml = await client
+      .get(`/api/v1/comprobantes/${c.body().id}/xml`)
+      .loginAs(admin)
+      .headers(h(empresa))
+    xml.assertStatus(404)
+    assert.include(xml.body().mensaje, 'aún no está disponible')
+  })
+
+  test('otros errores de la API al descargar se propagan', async ({ client }) => {
+    const falsa = new SunatFalsa().cuando('GET /boletas/501/cdr', {
+      status: 401,
+      cuerpo: { estado: 'error', mensaje: 'x' },
+    })
+    const { admin, empresa } = await emitida(falsa)
+    const c = await client
+      .post('/api/v1/comprobantes')
+      .loginAs(admin)
+      .headers(h(empresa))
+      .json(boletaValida)
+    const cdr = await client
+      .get(`/api/v1/comprobantes/${c.body().id}/cdr`)
+      .loginAs(admin)
+      .headers(h(empresa))
+    cdr.assertStatus(424)
+  })
+
   test('no descarga si el comprobante aún no llegó a SUNAT', async ({ client }) => {
     new SunatFalsa().cuando('POST /boletas', { error: new TypeError('fetch failed') }).instalar()
     const { admin, empresa } = await escenario()
