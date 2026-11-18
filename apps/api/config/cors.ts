@@ -12,7 +12,7 @@ const corsConfig = defineConfig({
   origin: origenes.length > 0 ? origenes : true,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   headers: true,
-  exposeHeaders: ['content-disposition'],
+  exposeHeaders: ['content-disposition', 'x-formato-impresion'],
   credentials: true,
   maxAge: 90,
 })

@@ -171,6 +171,8 @@ export default class ComprobantesController {
         sucursal: sucursal?.formatoImpresion,
         empresa: ctx.empresa.formatoImpresion,
       })
+    // El frontend lo usa para marcar qué formato está mostrando la vista previa
+    ctx.response.header('x-formato-impresion', efectivo)
     return this.descargar(ctx, comprobante, 'pdf', efectivo)
   }
 

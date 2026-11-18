@@ -84,7 +84,7 @@ export function ComprobanteDetalle() {
             {esVenta && aceptado && puede('comprobantes.emitir_nd') && <Boton variante="secundario" onClick={() => setDialogo('nd')}><FilePlus2 className="size-4" /> Nota de débito</Boton>}
             {esVenta && d.venta_id && puede('guias.emitir') && <Boton variante="secundario" onClick={() => setDialogo('guia')}><Truck className="size-4" /> Guía de remisión</Boton>}
             {['01', '03', '07', '08'].includes(d.tipo_documento) && aceptado && puede('comprobantes.anular') && <Boton variante="secundario" onClick={() => setDialogo('anular')}><Ban className="size-4" /> Anular</Boton>}
-            <MenuImpresion id={d.id} deshabilitado={!d.sunat_api_id} />
+            <MenuImpresion id={d.id} deshabilitado={!d.sunat_api_id} numero={d.numero_completo} estado={d.sunat_estado} />
           </>
         }
       />

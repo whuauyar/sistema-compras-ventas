@@ -6,11 +6,11 @@ import { toast } from 'sonner'
 import { api, mensajeError } from '@/lib/api'
 import { useSesion } from '@/lib/sesion'
 import { descargarArchivo } from '@/lib/descargas'
-import { abrirPdf } from '@/lib/pdf'
 import { ESTADOS, TIPOS_DOCUMENTO, type EstadoSunat } from '@/lib/sunat'
 import { cn, fecha, soles } from '@/lib/utils'
 import { EstadoSunatBadge } from '@/components/EstadoSunat'
 import { FormAnular } from '@/components/FormAnular'
+import { VistaImpresion } from '@/components/VistaImpresion'
 import { Boton, Cargando, Dialogo, Encabezado, Entrada, Insignia, Selector, Vacio } from '@/components/ui'
 
 export interface ComprobanteFila {
@@ -81,6 +81,7 @@ export function Comprobantes() {
   const [orden, setOrden] = useState<{ campo: string; dir: 'asc' | 'desc' } | null>(null)
   const [verRespuesta, setVerRespuesta] = useState<ComprobanteFila | null>(null)
   const [anulando, setAnulando] = useState<ComprobanteFila | null>(null)
+  const [imprimiendo, setImprimiendo] = useState<ComprobanteFila | null>(null)
 
   const sucursales = useQuery({ queryKey: ['sucursales'], queryFn: () => api.get<Array<{ id: number; nombre: string }>>('/sucursales') })
 
@@ -260,7 +261,7 @@ export function Comprobantes() {
                           {ANULABLES.includes(c.tipo_documento) && c.sunat_estado === 'aceptado' && puede('comprobantes.anular') && (
                             <Opcion peligro icono={Ban} onClick={() => { cerrar(); setAnulando(c) }}>Anular comprobante</Opcion>
                           )}
-                          <Opcion icono={FileText} deshabilitado={!c.sunat_api_id} onClick={() => { cerrar(); void abrirPdf(c.id) }}>Ver / PDF</Opcion>
+                          <Opcion icono={FileText} deshabilitado={!c.sunat_api_id} onClick={() => { cerrar(); setImprimiendo(c) }}>Ver / Imprimir</Opcion>
                           <Opcion icono={FileText} onClick={() => cerrar()} enlace={`/ventas/comprobantes/${c.id}`}>Ver detalle</Opcion>
                           <Opcion icono={Download} deshabilitado={!c.sunat_api_id} onClick={() => { cerrar(); void descargarArchivo(`/comprobantes/${c.id}/xml`) }}>Descargar XML</Opcion>
                           <Opcion icono={Download} deshabilitado={!c.sunat_api_id || !CON_CDR.includes(c.sunat_estado)} onClick={() => { cerrar(); void descargarArchivo(`/comprobantes/${c.id}/cdr`) }}>Descargar CDR</Opcion>
@@ -299,6 +300,7 @@ export function Comprobantes() {
       )}
 
       {verRespuesta && <DialogoRespuesta comprobante={verRespuesta} onCerrar={() => setVerRespuesta(null)} />}
+      {imprimiendo && <VistaImpresion comprobante={imprimiendo} onCerrar={() => setImprimiendo(null)} />}
       {anulando && (
         <FormAnular comprobante={anulando} onCerrar={() => setAnulando(null)} onGuardado={() => qc.invalidateQueries({ queryKey: ['comprobantes'] })} />
       )}

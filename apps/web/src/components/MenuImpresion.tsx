@@ -1,36 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Printer } from 'lucide-react'
-import { FORMATOS } from '@/lib/sunat'
-import { abrirPdf } from '@/lib/pdf'
+import { useState } from 'react'
+import { Printer } from 'lucide-react'
+import type { EstadoSunat } from '@/lib/sunat'
 import { Boton } from './ui'
+import { VistaImpresion } from './VistaImpresion'
 
-export function MenuImpresion({ id, deshabilitado }: { id: number; deshabilitado?: boolean }) {
+/** Botón "Imprimir": abre la vista previa con selector de formato (A4, A5, 80 mm, 58 mm). */
+export function MenuImpresion({
+  id,
+  deshabilitado,
+  numero = null,
+  estado = 'aceptado',
+}: {
+  id: number
+  deshabilitado?: boolean
+  numero?: string | null
+  estado?: EstadoSunat
+}) {
   const [abierto, setAbierto] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const cerrar = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setAbierto(false)
-    document.addEventListener('mousedown', cerrar)
-    return () => document.removeEventListener('mousedown', cerrar)
-  }, [])
-
   return (
-    <div ref={ref} className="relative inline-flex">
-      <Boton variante="secundario" tamano="sm" className="rounded-r-none" disabled={deshabilitado} onClick={() => abrirPdf(id)} title="Imprimir en el formato predeterminado">
+    <>
+      <Boton variante="secundario" tamano="sm" disabled={deshabilitado} onClick={() => setAbierto(true)} title="Vista previa e impresión">
         <Printer className="size-3.5" /> Imprimir
       </Boton>
-      <Boton variante="secundario" tamano="sm" className="-ml-px rounded-l-none px-1.5" disabled={deshabilitado} onClick={() => setAbierto((v) => !v)} aria-label="Más formatos">
-        <ChevronDown className="size-3.5" />
-      </Boton>
-      {abierto && (
-        <div className="absolute right-0 top-9 z-20 w-48 rounded-md border border-slate-200 bg-white py-1 text-sm">
-          {FORMATOS.map((f) => (
-            <button key={f.valor} className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-slate-50" onClick={() => (setAbierto(false), abrirPdf(id, f.valor))}>
-              <Printer className="size-3.5 text-slate-400" /> {f.etiqueta}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {abierto && <VistaImpresion comprobante={{ id, numero_completo: numero, sunat_estado: estado }} onCerrar={() => setAbierto(false)} />}
+    </>
   )
 }

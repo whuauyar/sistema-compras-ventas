@@ -40,7 +40,7 @@ export function Guias() {
                   <td>{fecha(g.fecha_emision)}</td>
                   <td>{g.cliente_razon_social}</td>
                   <td><EstadoSunatBadge estado={g.sunat_estado} codigo={g.sunat_codigo} descripcion={g.sunat_descripcion} /></td>
-                  <td className="text-right"><MenuImpresion id={g.id} deshabilitado={!g.sunat_api_id} /></td>
+                  <td className="text-right"><MenuImpresion id={g.id} deshabilitado={!g.sunat_api_id} numero={g.numero_completo} estado={g.sunat_estado} /></td>
                 </tr>
               ))}
             </tbody>

@@ -81,12 +81,12 @@ export const api = {
   put: <T>(ruta: string, cuerpo?: unknown) => peticion<T>('PUT', ruta, cuerpo ?? {}),
   delete: <T>(ruta: string) => peticion<T>('DELETE', ruta),
   /** Descarga binaria autenticada (PDF/XML/CDR). */
-  async blob(ruta: string): Promise<{ blob: Blob; nombre: string }> {
+  async blob(ruta: string): Promise<{ blob: Blob; nombre: string; formato: string | null }> {
     const r = await fetch(`${BASE}${ruta}`, { headers: cabeceras() })
     if (!r.ok) throw new ApiError(r.status, await r.json().catch(() => null))
     const disp = r.headers.get('content-disposition') ?? ''
     const nombre = /filename="([^"]+)"/.exec(disp)?.[1] ?? 'documento'
-    return { blob: await r.blob(), nombre }
+    return { blob: await r.blob(), nombre, formato: r.headers.get('x-formato-impresion') }
   },
 }
 

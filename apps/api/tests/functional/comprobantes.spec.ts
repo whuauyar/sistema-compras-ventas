@@ -419,6 +419,7 @@ test.group('Comprobantes: impresión y descargas', (group) => {
     explicito.assertStatus(200)
     assert.equal(contenido(explicito), '%PDF')
     assert.include(explicito.header('content-disposition'), 'B001-1-a5.pdf')
+    assert.equal(explicito.header('x-formato-impresion'), 'a5')
 
     await client.get(`/api/v1/comprobantes/${id}/pdf`).loginAs(admin).headers(h(empresa))
     await Sucursal.query()

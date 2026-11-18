@@ -217,7 +217,7 @@ export function Pos() {
             <EstadoSunatBadge estado={resultado.sunat_estado} codigo={resultado.sunat_codigo} descripcion={resultado.sunat_descripcion} notas={resultado.sunat_notas} />
             {resultado.sunat_estado === 'error_envio' && <p className="text-sm text-orange-700">El servicio de facturación no respondió. Se enviará automáticamente; podrá imprimir cuando tenga número.</p>}
             <div className="flex gap-2">
-              <MenuImpresion id={resultado.id} deshabilitado={!resultado.sunat_api_id} />
+              <MenuImpresion id={resultado.id} deshabilitado={!resultado.sunat_api_id} numero={resultado.numero_completo} estado={resultado.sunat_estado} />
               <Boton onClick={reiniciar}>Nueva venta</Boton>
             </div>
           </div>
