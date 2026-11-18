@@ -36,6 +36,7 @@ const CajaController = () => import('#controllers/caja_controller')
 const DocumentosController = () => import('#controllers/documentos_controller')
 const ReportesController = () => import('#controllers/reportes_controller')
 const AdminController = () => import('#controllers/admin_controller')
+const ConfiguracionSunatController = () => import('#controllers/configuracion_sunat_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -90,6 +91,22 @@ router
 
         router.get('empresa', [EmpresasController, 'show'])
         router.put('empresa', [EmpresasController, 'update']).use(p('config.empresa'))
+        // Configuración integral en la API SUNAT
+        router
+          .group(() => {
+            router.get('', [ConfiguracionSunatController, 'show'])
+            router.put('', [ConfiguracionSunatController, 'update'])
+            router.post('certificado', [ConfiguracionSunatController, 'certificado'])
+            router.post('logo', [ConfiguracionSunatController, 'logo'])
+            router.post('credenciales/regenerar', [
+              ConfiguracionSunatController,
+              'regenerarCredenciales',
+            ])
+            router.post('sincronizar', [ConfiguracionSunatController, 'sincronizar'])
+          })
+          .prefix('empresa/sunat')
+          .use(p('config.empresa'))
+        router.get('catalogos/ubigeo/:nivel', [CatalogoController, 'ubigeo'])
 
         router.get('sucursales', [SucursalesController, 'index'])
         router.post('sucursales', [SucursalesController, 'store']).use(p('config.sucursales'))
@@ -97,6 +114,7 @@ router
 
         router.get('series', [SeriesController, 'index'])
         router.post('series', [SeriesController, 'store']).use(p('config.series'))
+        router.put('series/:id', [SeriesController, 'update']).use(p('config.series'))
 
         router.get('permisos', [RolesController, 'permisos']).use(p('config.roles'))
         router.get('roles', [RolesController, 'index']).use(p('config.roles'))

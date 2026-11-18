@@ -94,6 +94,54 @@ export class SunatClient {
     })
   }
 
+  /** POST /empresa/certificado (multipart: certificado + contrasena_certificado). */
+  subirCertificado(cred: CredencialesSunat, formData: FormData) {
+    return this.datos<null>('/empresa/certificado', {
+      metodo: 'POST',
+      formData,
+      credenciales: cred,
+    })
+  }
+
+  /** POST /empresa/logo (multipart: logo). */
+  subirLogo(cred: CredencialesSunat, formData: FormData) {
+    return this.datos<{ logo_path: string; logo_url: string }>('/empresa/logo', {
+      metodo: 'POST',
+      formData,
+      credenciales: cred,
+    })
+  }
+
+  /** POST /empresa/credenciales/regenerar: invalida las actuales y devuelve las nuevas UNA vez. */
+  regenerarCredenciales(cred: CredencialesSunat) {
+    return this.datos<{ api_key: string; api_secret: string }>('/empresa/credenciales/regenerar', {
+      metodo: 'POST',
+      credenciales: cred,
+    })
+  }
+
+  /** GET /sunat/estado: disponibilidad de SUNAT para el entorno de la empresa. */
+  estadoServicio(cred: CredencialesSunat) {
+    return this.peticion<{
+      estado: string
+      sunat: { disponible: boolean; circuit: string; fallas: number; entorno: string }
+    }>('/sunat/estado', { credenciales: cred })
+  }
+
+  /** Catálogo de ubigeo INEI/SUNAT: regiones → provincias (region_id) → distritos (provincia_id). */
+  ubigeo(cred: CredencialesSunat, nivel: 'regiones' | 'provincias' | 'distritos', padre?: string) {
+    const query =
+      nivel === 'provincias'
+        ? { region_id: padre }
+        : nivel === 'distritos'
+          ? { provincia_id: padre }
+          : undefined
+    return this.datos<Array<{ id: string; nombre: string }>>(`/catalogos/ubigeo/${nivel}`, {
+      query,
+      credenciales: cred,
+    })
+  }
+
   listarSucursales(cred: CredencialesSunat) {
     return this.datos<
       Array<{ id: number; nombre: string; cod_local: string; es_principal: boolean }>
@@ -106,6 +154,26 @@ export class SunatClient {
   ) {
     return this.datos<{ id: number }>('/sucursales', {
       metodo: 'POST',
+      cuerpo: datos,
+      credenciales: cred,
+    })
+  }
+
+  actualizarSucursal(
+    cred: CredencialesSunat,
+    id: number,
+    datos: { nombre?: string; direccion?: string; ubigeo?: string; activo?: boolean }
+  ) {
+    return this.datos<Record<string, any>>(`/sucursales/${id}`, {
+      metodo: 'PUT',
+      cuerpo: datos,
+      credenciales: cred,
+    })
+  }
+
+  actualizarSerie(cred: CredencialesSunat, id: number, datos: { activo?: boolean }) {
+    return this.datos<Record<string, any>>(`/series/${id}`, {
+      metodo: 'PUT',
       cuerpo: datos,
       credenciales: cred,
     })

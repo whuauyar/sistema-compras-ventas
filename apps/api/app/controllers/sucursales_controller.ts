@@ -78,6 +78,19 @@ export default class SucursalesController {
       .firstOrFail()
     const datos = await ctx.request.validateUsing(sucursalValidator)
     const antes = sucursal.serialize()
+    // Primero en la API SUNAT: si falla, no se toca el espejo local
+    if (sucursal.sunatSucursalId) {
+      await SunatGateway.cliente().actualizarSucursal(
+        ctx.empresa.credenciales(),
+        sucursal.sunatSucursalId,
+        {
+          nombre: datos.nombre,
+          direccion: datos.direccion,
+          ubigeo: datos.ubigeo,
+          activo: datos.activo ?? sucursal.activo,
+        }
+      )
+    }
     // El código de local no se cambia: está ligado a la sucursal en SUNAT
     sucursal.merge({
       nombre: datos.nombre,

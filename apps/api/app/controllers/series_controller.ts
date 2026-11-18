@@ -3,7 +3,7 @@ import '#types/http_context'
 import Serie from '#models/serie'
 import Sucursal from '#models/sucursal'
 import { SunatGateway } from '#integrations/sunat/sunat_service'
-import { serieValidator } from '#validators/empresa'
+import { actualizarSerieValidator, serieValidator } from '#validators/empresa'
 import { validarSerie } from '#domain/reglas_comprobante'
 import { ReglaNegocioError } from '#exceptions/regla_negocio_error'
 import { auditarCtx } from '#services/auditoria_service'
@@ -43,5 +43,26 @@ export default class SeriesController {
     })
     await auditarCtx(ctx, 'serie.crear', 'serie', serie.id, { despues: serie.serialize() })
     return ctx.response.created(serie)
+  }
+
+  /** Activa o desactiva la serie en la API SUNAT y aquí. */
+  async update(ctx: HttpContext) {
+    const serie = await Serie.query()
+      .where({ id: ctx.params.id, empresaId: ctx.empresa.id })
+      .firstOrFail()
+    const { activo } = await ctx.request.validateUsing(actualizarSerieValidator)
+    if (serie.sunatSerieId) {
+      await SunatGateway.cliente().actualizarSerie(ctx.empresa.credenciales(), serie.sunatSerieId, {
+        activo,
+      })
+    }
+    const antes = serie.activo
+    serie.activo = activo
+    await serie.save()
+    await auditarCtx(ctx, 'serie.actualizar', 'serie', serie.id, {
+      antes: { activo: antes },
+      despues: { activo },
+    })
+    return serie
   }
 }

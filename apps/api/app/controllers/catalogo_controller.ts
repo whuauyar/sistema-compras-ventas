@@ -7,9 +7,47 @@ import Producto from '#models/producto'
 import { categoriaValidator, listadoValidator, productoValidator } from '#validators/inventario'
 import { ReglaNegocioError } from '#exceptions/regla_negocio_error'
 import { auditarCtx } from '#services/auditoria_service'
+import { SunatGateway } from '#integrations/sunat/sunat_service'
+import { ubigeoQueryValidator } from '#validators/empresa'
+
+/** El ubigeo casi no cambia: se guarda en memoria por proceso. */
+const cacheUbigeo = new Map<string, Array<{ id: string; nombre: string }>>()
+
+/** Solo para pruebas. */
+export function limpiarCacheUbigeo() {
+  cacheUbigeo.clear()
+}
 
 /** Categorías y productos (catálogo). */
 export default class CatalogoController {
+  /** Ubigeo INEI/SUNAT desde la API: regiones → provincias (region_id) → distritos (provincia_id). */
+  async ubigeo(ctx: HttpContext) {
+    const nivel = ctx.params.nivel as string
+    if (!['regiones', 'provincias', 'distritos'].includes(nivel)) {
+      return ctx.response.notFound({ mensaje: 'Nivel de ubigeo desconocido.' })
+    }
+    const q = await ubigeoQueryValidator.validate(ctx.request.qs())
+    const padre = nivel === 'provincias' ? q.region_id : nivel === 'distritos' ? q.provincia_id : ''
+    if (nivel !== 'regiones' && !padre) {
+      throw new ReglaNegocioError(
+        nivel === 'provincias' ? 'Indique region_id.' : 'Indique provincia_id.'
+      )
+    }
+    const clave = `${nivel}:${padre}`
+    if (!cacheUbigeo.has(clave)) {
+      const filas = await SunatGateway.cliente().ubigeo(
+        ctx.empresa.credenciales(),
+        nivel as 'regiones' | 'provincias' | 'distritos',
+        padre
+      )
+      cacheUbigeo.set(
+        clave,
+        filas.map((f) => ({ id: String(f.id), nombre: f.nombre }))
+      )
+    }
+    return cacheUbigeo.get(clave)
+  }
+
   async categorias({ empresa }: HttpContext) {
     return Categoria.query().where('empresa_id', empresa.id).orderBy('nombre')
   }

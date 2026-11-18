@@ -411,7 +411,10 @@ test.group('Sucursales y series', (group) => {
   group.each.teardown(() => SunatGateway.usar(null))
 
   test('crea sucursal en SUNAT y localmente con almacén y caja', async ({ client, assert }) => {
-    new SunatFalsa().cuando('POST /sucursales', exito({ id: 88 }, 201)).instalar()
+    new SunatFalsa()
+      .cuando('POST /sucursales', exito({ id: 88 }, 201))
+      .cuando('PUT /sucursales/88', exito({ id: 88 }))
+      .instalar()
     const admin = await crearUsuario()
     const empresa = await crearEmpresa(admin)
     const h = { 'x-empresa-id': String(empresa.id) }

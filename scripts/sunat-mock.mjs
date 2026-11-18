@@ -12,6 +12,14 @@ const docs = new Map()
 const anulaciones = new Map()
 const correlativos = {}
 let siguienteId = 1000
+const empresa = {
+  id: 1, ruc: '20601234567', razon_social: 'EMPRESA DEMO SAC', nombre_comercial: 'Demo', direccion: 'Av. Demo 123, Lima',
+  ubigeo: '150101', departamento: 'LIMA', provincia: 'LIMA', distrito: 'LIMA', entorno: 'beta', tax_regime: 'general',
+  nrus_categoria: null, igv_rate_override: null, tasa_igv_vigente: 0.18, sol_user: 'MODDATOS', tiene_sol_pass: true,
+  client_id: 'demo-gre', tiene_client_secret: true, tiene_certificado: true, logo_url: null, plan: 'demo',
+  max_documentos_mes: 500, documentos_este_mes: 3, activo: true, telefonos: [], emails: [], cuentas_bancarias: [],
+  billeteras_digitales: [], mensaje_agradecimiento: null, mensaje_promocional: null,
+}
 
 const pdfMinimo = (texto) =>
   `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 226 300]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj 4 0 obj<</Length ${44 + texto.length}>>stream\nBT /F1 10 Tf 10 280 Td (${texto}) Tj ET\nendstream endobj 5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF`
@@ -43,8 +51,36 @@ createServer(async (req, res) => {
     return res.end(JSON.stringify({ estado: 'error', mensaje: 'Las cabeceras X-Api-Key y X-Api-Secret son requeridas.' }))
   }
 
-  if (m === 'GET' && ruta === '/empresa')
-    return ok(res, { id: 1, ruc: '20601234567', razon_social: 'EMPRESA DEMO SAC', nombre_comercial: 'Demo', direccion: 'Av. Demo 123, Lima', ubigeo: '150101', entorno: 'beta', tax_regime: 'general', client_id: 'demo-gre', tiene_client_secret: true })
+  if (m === 'GET' && ruta === '/empresa') return ok(res, empresa)
+  if (m === 'PUT' && ruta === '/empresa') {
+    const c = await leer(req)
+    for (const [k, v] of Object.entries(c)) if (v !== null && v !== undefined) empresa[k] = v
+    if (c.sol_pass) empresa.tiene_sol_pass = true
+    if (c.client_secret) empresa.tiene_client_secret = true
+    delete empresa.sol_pass
+    delete empresa.client_secret
+    return ok(res, empresa)
+  }
+  if (m === 'POST' && ruta === '/empresa/certificado') {
+    empresa.tiene_certificado = true
+    return ok(res, null)
+  }
+  if (m === 'POST' && ruta === '/empresa/logo') {
+    empresa.logo_url = 'https://placehold.co/120x40/png?text=LOGO'
+    return ok(res, { logo_path: 'logos/demo.png', logo_url: empresa.logo_url })
+  }
+  if (m === 'POST' && ruta === '/empresa/credenciales/regenerar')
+    return ok(res, { api_key: `demo-key-${Date.now()}`, api_secret: `demo-secret-${Date.now()}` })
+  if (m === 'GET' && ruta === '/sunat/estado') {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    return res.end(JSON.stringify({ estado: 'exito', sunat: { disponible: true, circuit: 'closed', fallas: 0, entorno: empresa.entorno } }))
+  }
+  if (m === 'GET' && ruta === '/catalogos/ubigeo/regiones') return ok(res, [{ id: '04', nombre: 'AREQUIPA' }, { id: '15', nombre: 'LIMA' }])
+  if (m === 'GET' && ruta === '/catalogos/ubigeo/provincias')
+    return ok(res, url.searchParams.get('region_id') === '15' ? [{ id: '1501', nombre: 'LIMA' }] : [{ id: '0401', nombre: 'AREQUIPA' }])
+  if (m === 'GET' && ruta === '/catalogos/ubigeo/distritos')
+    return ok(res, url.searchParams.get('provincia_id') === '1501' ? [{ id: '150101', nombre: 'LIMA' }, { id: '150122', nombre: 'MIRAFLORES' }] : [{ id: '040101', nombre: 'AREQUIPA' }])
+  if (m === 'PUT' && /^\/(sucursales|series)\/\d+$/.test(ruta)) return ok(res, { id: Number(ruta.split('/')[2]), ...(await leer(req)) })
   if (m === 'GET' && ruta === '/sucursales') return ok(res, [{ id: 1, nombre: 'Principal', cod_local: '0000', es_principal: true }])
   if (m === 'POST' && ruta === '/sucursales') return ok(res, { id: ++siguienteId }, 201)
   if (m === 'POST' && ruta === '/series') {

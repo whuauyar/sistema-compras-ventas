@@ -23,6 +23,7 @@ docs/
 | 5 | Notas de crédito/débito, guía de remisión remitente, anulación (baja y resumen diario) | ✅ |
 | 6 | Dashboard, reportes (ventas, compras, utilidad, inventario, kardex, registro de ventas), exportación CSV | ✅ |
 | 7 | Límite de intentos de acceso, cabeceras de seguridad, carga diferida del frontend, cobertura | ✅ |
+| 9 | Configuración integral de la empresa en la API SUNAT: datos fiscales y ubigeo, régimen e IGV especial, clave SOL y GRE, entorno, certificado, logo, datos de impresión, renovación de credenciales de la API, edición de sucursales y series sincronizada | ✅ |
 | 8 | SuperAdmin de plataforma: alta de empresas con su Administrador, permisos habilitados por empresa, suspender/reactivar, usuarios de cualquier empresa, roles plantilla globales | ✅ |
 
 **Pendiente de verificar contra la API real (beta):** todo está probado con un simulador. Los formatos que se infirieron del código de la API y conviene confirmar en la primera prueba son: respuesta de `GET /anulaciones/{id}/estado` y `GET /resumenes/{id}/estado`, `POST /series` (`creadas[]`) y el estado de las guías.
@@ -146,6 +147,7 @@ Cada push a `main` despliega solo el servicio cuyos archivos cambiaron (watch pa
 |---|---|
 | Acceso | `POST auth/login`, `GET auth/yo`, `POST auth/logout`, `GET/PUT perfil`, `PUT perfil/password` |
 | Plataforma (SuperAdmin) | `admin/permisos`, `admin/empresas` (+`registrar` multipart, `vincular`, `:id`, `:id/estado`, `:id/permisos`, `:id/usuarios`), `admin/plantillas` |
+| Empresa (API SUNAT) | `GET/PUT empresa/sunat`, `POST empresa/sunat/certificado` (multipart), `POST empresa/sunat/logo` (multipart), `POST empresa/sunat/credenciales/regenerar`, `POST empresa/sunat/sincronizar`, `GET catalogos/ubigeo/{regiones,provincias,distritos}` |
 | Empresa | `GET/PUT empresa`, `sucursales`, `series`, `usuarios`, `roles` (+`clonar`), `permisos` |
 | Inventario | `categorias`, `productos`, `almacenes`, `inventario/kardex`, `inventario/ajustes`, `inventario/transferencias` |
 | Compras | `proveedores`, `ordenes-compra` (+`aprobar`, `anular`), `compras` (+`anular`), `cuentas-por-pagar` (+`pagos`) |

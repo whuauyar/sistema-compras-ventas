@@ -43,6 +43,16 @@ export function Series() {
     }
   })
 
+  const alternar = async (s: SerieFila) => {
+    if (s.activo && !window.confirm(`¿Desactivar la serie ${s.serie}? No se podrá emitir con ella.`)) return
+    try {
+      await api.put(`/series/${s.id}`, { activo: !s.activo })
+      qc.invalidateQueries({ queryKey: ['series'] })
+    } catch (e) {
+      toast.error(mensajeError(e))
+    }
+  }
+
   return (
     <>
       <Encabezado
@@ -52,7 +62,7 @@ export function Series() {
       />
       {series.isLoading ? <Cargando /> : (
         <Tabla>
-          <thead><tr><th>Serie</th><th>Documento</th><th>Sucursal</th><th>SUNAT</th></tr></thead>
+          <thead><tr><th>Serie</th><th>Documento</th><th>Sucursal</th><th>SUNAT</th><th>Estado</th></tr></thead>
           <tbody>
             {series.data?.map((s) => (
               <tr key={s.id}>
@@ -60,6 +70,12 @@ export function Series() {
                 <td>{TIPOS_DOCUMENTO[s.tipo_documento]}</td>
                 <td>{nombreSucursal(s.sucursal_id)}</td>
                 <td>{s.sunat_serie_id ? 'Registrada' : <span className="text-slate-500">Existente / sin id</span>}</td>
+                <td>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" className="size-4 accent-acento-600" checked={s.activo} disabled={!puede('config.series')} onChange={() => alternar(s)} />
+                    {s.activo ? 'Activa' : 'Inactiva'}
+                  </label>
+                </td>
               </tr>
             ))}
           </tbody>
