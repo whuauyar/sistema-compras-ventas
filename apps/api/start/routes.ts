@@ -140,6 +140,9 @@ router
           .post('comprobantes/:id/reenviar', [ComprobantesController, 'reenviar'])
           .use(p('comprobantes.emitir'))
         router.get('comprobantes/:id/pdf', [ComprobantesController, 'pdf']).use(p('ventas.ver'))
+        router
+          .get('comprobantes/:id/respuesta', [ComprobantesController, 'respuesta'])
+          .use(p('ventas.ver'))
         router.get('comprobantes/:id/xml', [ComprobantesController, 'xml']).use(p('ventas.ver'))
         router.get('comprobantes/:id/cdr', [ComprobantesController, 'cdr']).use(p('ventas.ver'))
 

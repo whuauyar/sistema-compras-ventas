@@ -53,6 +53,13 @@ export const listarComprobantesValidator = vine.compile(
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
+    sucursal_id: vine.number().positive().optional(),
+    serie: vine.string().trim().toUpperCase().maxLength(4).optional(),
+    moneda: vine.enum(['PEN', 'USD'] as const).optional(),
+    ordenar: vine
+      .enum(['tipo', 'numero', 'cliente', 'total', 'estado', 'emision', 'envio'] as const)
+      .optional(),
+    direccion: vine.enum(['asc', 'desc'] as const).optional(),
   })
 )
 

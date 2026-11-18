@@ -25,22 +25,77 @@ export default class ComprobantesController {
     const f = await request.validateUsing(listarComprobantesValidator, {
       data: qsPlano(request.qs()),
     })
-    const consulta = Comprobante.query().where('empresa_id', empresa.id)
-    if (f.estado) consulta.whereIn('sunat_estado', f.estado.split(','))
-    if (f.tipo_documento) consulta.whereIn('tipo_documento', f.tipo_documento.split(','))
-    if (f.fecha_desde) consulta.where('fecha_emision', '>=', f.fecha_desde)
-    if (f.fecha_hasta) consulta.where('fecha_emision', '<=', f.fecha_hasta)
-    if (f.buscar) {
-      const texto = `%${f.buscar}%`
-      consulta.where((q) =>
-        q
-          .whereILike('numero_completo', texto)
-          .orWhereILike('cliente_razon_social', texto)
-          .orWhere('cliente_num_doc', f.buscar!)
-      )
+    const filtrar = (consulta: any) => {
+      consulta.where('empresa_id', empresa.id)
+      if (f.estado) consulta.whereIn('sunat_estado', f.estado.split(','))
+      if (f.tipo_documento) consulta.whereIn('tipo_documento', f.tipo_documento.split(','))
+      if (f.fecha_desde) consulta.where('fecha_emision', '>=', f.fecha_desde)
+      if (f.fecha_hasta) consulta.where('fecha_emision', '<=', f.fecha_hasta)
+      if (f.sucursal_id) consulta.where('sucursal_id', f.sucursal_id)
+      if (f.serie) consulta.where('serie', f.serie)
+      if (f.moneda) consulta.where('moneda', f.moneda)
+      if (f.buscar) {
+        const texto = `%${f.buscar}%`
+        consulta.where((q: any) =>
+          q
+            .whereILike('numero_completo', texto)
+            .orWhereILike('cliente_razon_social', texto)
+            .orWhere('cliente_num_doc', f.buscar!)
+        )
+      }
+      return consulta
     }
-    const pagina = await consulta.orderBy('id', 'desc').paginate(f.pagina ?? 1, f.por_pagina ?? 20)
-    return pagina.toJSON()
+
+    const columnas: Record<string, string> = {
+      tipo: 'tipo_documento',
+      numero: 'numero_completo',
+      cliente: 'cliente_razon_social',
+      total: 'total',
+      estado: 'sunat_estado',
+      emision: 'fecha_emision',
+      envio: 'sunat_enviado_en',
+    }
+    const consulta = filtrar(Comprobante.query())
+    if (f.ordenar) consulta.orderBy(columnas[f.ordenar], f.direccion ?? 'asc')
+    consulta.orderBy('id', 'desc')
+    const pagina = await consulta.paginate(f.pagina ?? 1, f.por_pagina ?? 20)
+
+    // Indicadores con los mismos filtros (sin paginar)
+    const fila = await filtrar(db.from('comprobantes'))
+      .select(
+        db.raw('count(*)::int as total'),
+        db.raw(`count(*) filter (where tipo_documento = '01')::int as facturas`),
+        db.raw(`count(*) filter (where tipo_documento = '03')::int as boletas`),
+        db.raw(`count(*) filter (where tipo_documento = '07')::int as notas_credito`),
+        db.raw(`count(*) filter (where tipo_documento = '08')::int as notas_debito`),
+        db.raw(`count(*) filter (where tipo_documento in ('09', '31'))::int as guias`),
+        db.raw(`count(*) filter (where sunat_estado = 'aceptado')::int as aceptados`),
+        db.raw(`count(*) filter (where sunat_estado = 'rechazado')::int as rechazados`),
+        // Neto: facturas, boletas y ND suman; NC resta; anulados y rechazados no cuentan
+        db.raw(`coalesce(sum(case
+          when sunat_estado in ('anulado', 'rechazado') or tipo_documento in ('09', '31') then 0
+          when tipo_documento = '07' then -total
+          else total end), 0)::float as monto_total`)
+      )
+      .first()
+
+    return { ...pagina.toJSON(), resumen: fila }
+  }
+
+  /** Respuesta SUNAT del comprobante (para "Ver JSON"): estado, código, notas y respuesta cruda de la API. */
+  async respuesta(ctx: HttpContext) {
+    const c = await this.buscar(ctx)
+    return {
+      numero_completo: c.numeroCompleto,
+      sunat_estado: c.sunatEstado,
+      sunat_codigo: c.sunatCodigo,
+      sunat_descripcion: c.sunatDescripcion,
+      sunat_notas: c.sunatNotas,
+      hash_cpe: c.hashCpe,
+      sunat_enviado_en: c.sunatEnviadoEn,
+      sunat_consultado_en: c.sunatConsultadoEn,
+      respuesta_api: c.ultimaRespuesta ?? null,
+    }
   }
 
   /** Contadores por estado SUNAT para los chips de la bandeja. */

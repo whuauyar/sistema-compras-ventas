@@ -197,6 +197,7 @@ export class ComprobanteService {
       hashCpe: sunat.hash_cpe ?? comprobante.hashCpe,
       ultimaRespuesta: datos,
       sunatConsultadoEn: DateTime.now(),
+      sunatEnviadoEn: comprobante.sunatEnviadoEn ?? (datos?.id ? DateTime.now() : null),
     })
     await comprobante.save()
     if (estadoAnterior !== comprobante.sunatEstado) {

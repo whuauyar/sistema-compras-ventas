@@ -91,6 +91,10 @@ export default class Comprobante extends BaseModel {
   @column.dateTime()
   declare sunatConsultadoEn: DateTime | null
 
+  /** Cuando la API SUNAT registró el comprobante (primera respuesta con id). */
+  @column.dateTime()
+  declare sunatEnviadoEn: DateTime | null
+
   @column()
   declare codMotivo: string | null
 
