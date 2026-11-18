@@ -4,6 +4,7 @@ import Empresa from '#models/empresa'
 import Permiso from '#models/permiso'
 import Rol from '#models/rol'
 import RolPlantilla from '#models/rol_plantilla'
+import Sucursal from '#models/sucursal'
 import { EmpresaService } from '#services/empresa_service'
 import { UsuariosEmpresaService } from '#services/usuarios_empresa_service'
 import {
@@ -21,8 +22,8 @@ import {
   vincularEmpresaValidator,
 } from '#validators/empresa'
 import {
-  actualizarUsuarioEmpresaValidator,
   crearUsuarioEmpresaValidator,
+  editarUsuarioAdminValidator,
   rolValidator,
 } from '#validators/seguridad'
 
@@ -99,7 +100,9 @@ export default class AdminController {
   async empresa({ params }: HttpContext) {
     const empresa = await Empresa.findOrFail(params.id)
     const roles = await Rol.query().where('empresa_id', empresa.id).orderBy('nombre')
+    const sucursales = await Sucursal.query().where('empresa_id', empresa.id).orderBy('cod_local')
     return {
+      sucursales: sucursales.map((x) => ({ id: x.id, nombre: x.nombre, cod_local: x.codLocal })),
       empresa: vistaEmpresa(empresa),
       permisos: [...(await permisosHabilitados(empresa.id))].sort(),
       roles: roles.map((r) => ({ id: r.id, nombre: r.nombre, es_sistema: r.esSistema })),
@@ -203,8 +206,21 @@ export default class AdminController {
 
   async actualizarUsuario(ctx: HttpContext) {
     const empresa = await Empresa.findOrFail(ctx.params.id)
-    const datos = await ctx.request.validateUsing(actualizarUsuarioEmpresaValidator)
-    await usuarios.actualizar(empresa.id, Number(ctx.params.membresiaId), datos, actor(ctx))
+    const {
+      nombre_completo: nombre,
+      email,
+      password,
+      ...rol
+    } = await ctx.request.validateUsing(editarUsuarioAdminValidator)
+    const membresiaId = Number(ctx.params.membresiaId)
+    if (Object.values(rol).some((v) => v !== undefined))
+      await usuarios.actualizar(empresa.id, membresiaId, rol, actor(ctx))
+    await usuarios.actualizarCuenta(
+      empresa.id,
+      membresiaId,
+      { nombre_completo: nombre, email, password },
+      actor(ctx)
+    )
     return { mensaje: 'Usuario actualizado.' }
   }
 

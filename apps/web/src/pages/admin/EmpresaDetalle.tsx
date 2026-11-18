@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Save, UserRound } from 'lucide-react'
+import { Pencil, Plus, Save, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, mensajeError } from '@/lib/api'
 import { fecha } from '@/lib/utils'
@@ -22,6 +22,7 @@ interface DetalleEmpresa {
   }
   permisos: string[]
   roles: Array<{ id: number; nombre: string; es_sistema: boolean }>
+  sucursales: Array<{ id: number; nombre: string; cod_local: string }>
 }
 
 interface MiembroFila {
@@ -30,6 +31,7 @@ interface MiembroFila {
   email: string
   rol: { id: number; nombre: string }
   activo: boolean
+  sucursal_ids: number[]
   ultimo_acceso_en: string | null
 }
 
@@ -105,14 +107,15 @@ export function EmpresaDetalle() {
         </div>
       </Tarjeta>
 
-      <UsuariosEmpresa empresaId={empresa.id} roles={detalle.data.roles} />
+      <UsuariosEmpresa empresaId={empresa.id} roles={detalle.data.roles} sucursales={detalle.data.sucursales ?? []} />
     </>
   )
 }
 
-function UsuariosEmpresa({ empresaId, roles }: { empresaId: number; roles: DetalleEmpresa['roles'] }) {
+function UsuariosEmpresa({ empresaId, roles, sucursales }: { empresaId: number; roles: DetalleEmpresa['roles']; sucursales: DetalleEmpresa['sucursales'] }) {
   const qc = useQueryClient()
   const [abierto, setAbierto] = useState(false)
+  const [editando, setEditando] = useState<MiembroFila | null>(null)
   const clave = ['admin', 'empresa', String(empresaId), 'usuarios']
   const usuarios = useQuery({ queryKey: clave, queryFn: () => api.get<MiembroFila[]>(`/admin/empresas/${empresaId}/usuarios`) })
   const { register, handleSubmit, reset, formState } = useForm<{ nombre_completo: string; email: string; password: string; rol_id: string }>()
@@ -155,7 +158,7 @@ function UsuariosEmpresa({ empresaId, roles }: { empresaId: number; roles: Detal
       ) : (
         <div>
           <Tabla>
-            <thead><tr><th>Usuario</th><th>Rol</th><th className="hidden md:table-cell">Último acceso</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Usuario</th><th>Rol</th><th className="hidden md:table-cell">Último acceso</th><th>Estado</th><th /></tr></thead>
             <tbody>
               {usuarios.data?.map((u) => (
                 <tr key={u.membresia_id}>
@@ -176,11 +179,24 @@ function UsuariosEmpresa({ empresaId, roles }: { empresaId: number; roles: Detal
                       {u.activo ? <Insignia className="bg-emerald-50 text-emerald-700 ring-emerald-200">Activo</Insignia> : <Insignia className="bg-slate-100 text-slate-500 ring-slate-200">Inactivo</Insignia>}
                     </button>
                   </td>
+                  <td className="text-right">
+                    <Boton variante="fantasma" tamano="sm" title="Editar usuario" onClick={() => setEditando(u)}><Pencil className="size-3.5" /></Boton>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </Tabla>
         </div>
+      )}
+      {editando && (
+        <EditarUsuario
+          empresaId={empresaId}
+          miembro={editando}
+          roles={roles}
+          sucursales={sucursales}
+          onCerrar={() => setEditando(null)}
+          onGuardado={() => { setEditando(null); refrescar() }}
+        />
       )}
       <Dialogo abierto={abierto} titulo="Agregar usuario" onCerrar={() => setAbierto(false)}>
         <form onSubmit={crear} className="flex flex-col gap-4">
@@ -192,5 +208,79 @@ function UsuariosEmpresa({ empresaId, roles }: { empresaId: number; roles: Detal
         </form>
       </Dialogo>
     </Tarjeta>
+  )
+}
+
+function EditarUsuario({
+  empresaId,
+  miembro,
+  roles,
+  sucursales,
+  onCerrar,
+  onGuardado,
+}: {
+  empresaId: number
+  miembro: MiembroFila
+  roles: DetalleEmpresa['roles']
+  sucursales: DetalleEmpresa['sucursales']
+  onCerrar: () => void
+  onGuardado: () => void
+}) {
+  const { register, handleSubmit, formState } = useForm({
+    defaultValues: {
+      nombre_completo: miembro.nombre_completo,
+      email: miembro.email,
+      password: '',
+      rol_id: String(miembro.rol.id),
+      activo: miembro.activo,
+      sucursal_ids: (miembro.sucursal_ids ?? []).map(String),
+    },
+  })
+  const guardar = handleSubmit(async (d) => {
+    const cuerpo: Record<string, unknown> = {}
+    if (d.nombre_completo !== miembro.nombre_completo) cuerpo.nombre_completo = d.nombre_completo
+    if (d.email.trim().toLowerCase() !== miembro.email) cuerpo.email = d.email
+    if (d.password) cuerpo.password = d.password
+    if (Number(d.rol_id) !== miembro.rol.id) cuerpo.rol_id = Number(d.rol_id)
+    if (d.activo !== miembro.activo) cuerpo.activo = d.activo
+    cuerpo.sucursal_ids = (d.sucursal_ids || []).map(Number)
+    try {
+      await api.put(`/admin/empresas/${empresaId}/usuarios/${miembro.membresia_id}`, cuerpo)
+      toast.success(d.password ? 'Usuario actualizado. Sus sesiones abiertas se cerraron.' : 'Usuario actualizado.')
+      onGuardado()
+    } catch (e) {
+      toast.error(mensajeError(e))
+    }
+  })
+  return (
+    <Dialogo abierto titulo={`Editar ${miembro.nombre_completo}`} onCerrar={onCerrar}>
+      <form onSubmit={guardar} className="flex flex-col gap-4">
+        <Campo etiqueta="Nombre completo"><Entrada {...register('nombre_completo', { required: true, minLength: 3 })} /></Campo>
+        <Campo etiqueta="Correo" ayuda="Es su usuario para ingresar. Si tiene acceso a otras empresas, el cambio también aplica ahí.">
+          <Entrada type="email" {...register('email', { required: true })} />
+        </Campo>
+        <Campo etiqueta="Nueva contraseña" ayuda="Déjela vacía para no cambiarla. Mínimo 8 caracteres; cierra sus sesiones abiertas.">
+          <Entrada type="password" autoComplete="new-password" {...register('password', { minLength: 8 })} />
+        </Campo>
+        <Campo etiqueta="Rol"><Selector {...register('rol_id')}>{roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}</Selector></Campo>
+        {sucursales.length > 0 && (
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium">Sucursales</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {sucursales.map((s) => (
+                <label key={s.id} className="flex items-center gap-1.5 text-sm text-slate-600">
+                  <input type="checkbox" className="size-4 accent-acento-600" value={String(s.id)} {...register('sucursal_ids')} />
+                  {s.nombre} <span className="text-xs text-slate-400">{s.cod_local}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="size-4 accent-acento-600" {...register('activo')} /> Acceso activo a esta empresa
+        </label>
+        <Boton type="submit" cargando={formState.isSubmitting} className="self-start">Guardar cambios</Boton>
+      </form>
+    </Dialogo>
   )
 }

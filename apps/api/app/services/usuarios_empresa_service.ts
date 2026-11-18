@@ -150,6 +150,55 @@ export class UsuariosEmpresaService {
     })
   }
 
+  /**
+   * Datos de la cuenta (nombre, correo, contraseña). Solo el SuperAdmin: la cuenta puede
+   * pertenecer a varias empresas. Una contraseña nueva cierra las sesiones abiertas.
+   */
+  async actualizarCuenta(
+    empresaId: number,
+    membresiaId: number,
+    datos: { nombre_completo?: string; email?: string; password?: string },
+    actor: Actor
+  ) {
+    if (!datos.nombre_completo && !datos.email && !datos.password) return
+    const membresia = await UsuarioEmpresaRol.query()
+      .where({ id: membresiaId, empresaId })
+      .firstOrFail()
+    const usuario = await Usuario.findOrFail(membresia.usuarioId)
+    if (datos.email && datos.email !== usuario.email) {
+      if (await Usuario.query().where('email', datos.email).whereNot('id', usuario.id).first()) {
+        throw new ReglaNegocioError('Ese correo ya pertenece a otra cuenta.', [
+          { campo: 'email', mensaje: 'Correo en uso.' },
+        ])
+      }
+    }
+    const antes = { nombre_completo: usuario.nombreCompleto, email: usuario.email }
+    usuario.merge({
+      nombreCompleto: datos.nombre_completo ?? usuario.nombreCompleto,
+      email: datos.email ?? usuario.email,
+    })
+    if (datos.password) usuario.password = datos.password
+    await usuario.save()
+    if (datos.password) {
+      const tokens = await Usuario.accessTokens.all(usuario)
+      for (const t of tokens) await Usuario.accessTokens.delete(usuario, t.identifier)
+    }
+    await auditar({
+      empresaId,
+      usuarioId: actor.usuarioId,
+      accion: 'usuario.cuenta',
+      entidad: 'usuario',
+      entidadId: usuario.id,
+      antes,
+      despues: {
+        nombre_completo: usuario.nombreCompleto,
+        email: usuario.email,
+        password: datos.password ? 'cambiada' : undefined,
+      },
+      ip: actor.ip ?? null,
+    })
+  }
+
   private async validarRol(empresaId: number, rolId: number) {
     if (!(await Rol.query().where({ id: rolId, empresaId }).first())) {
       throw new ReglaNegocioError('Rol no válido para esta empresa.', [

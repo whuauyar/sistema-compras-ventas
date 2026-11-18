@@ -452,6 +452,89 @@ test.group('SuperAdmin: usuarios de cualquier empresa', (group) => {
     assert.equal(evento.usuarioId, sa.id, 'la auditoría registra al SuperAdmin')
   })
 
+  test('edita nombre, correo, contraseña y sucursales de un usuario', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await crearUsuario()
+    const empresa = await crearEmpresa(admin)
+    const sa = await crearSuperadmin()
+    const membresia = await UsuarioEmpresaRol.query()
+      .where({ usuarioId: admin.id, empresaId: empresa.id })
+      .firstOrFail()
+    await Usuario.accessTokens.create(admin)
+    const detalle = await client.get(`/api/v1/admin/empresas/${empresa.id}`).loginAs(sa)
+    const sucursalId = detalle.body().sucursales[0].id
+
+    const r = await client
+      .put(`/api/v1/admin/empresas/${empresa.id}/usuarios/${membresia.id}`)
+      .loginAs(sa)
+      .json({
+        nombre_completo: 'Nombre Corregido',
+        email: 'Corregido@Prueba.pe',
+        password: 'clave-nueva-123',
+        sucursal_ids: [sucursalId],
+      })
+    r.assertStatus(200)
+    const u = await Usuario.verifyCredentials('corregido@prueba.pe', 'clave-nueva-123')
+    assert.equal(u.nombreCompleto, 'Nombre Corregido')
+    assert.lengthOf(await Usuario.accessTokens.all(u), 0, 'cierra sus sesiones')
+    const evento = await Auditoria.query()
+      .where({ empresaId: empresa.id, accion: 'usuario.cuenta' })
+      .firstOrFail()
+    assert.notInclude(JSON.stringify(evento.despues), 'clave-nueva-123')
+    assert.equal(evento.usuarioId, sa.id)
+  })
+
+  test('cambiar solo el nombre no toca rol ni contraseña', async ({ client, assert }) => {
+    const admin = await crearUsuario()
+    const empresa = await crearEmpresa(admin)
+    const membresia = await UsuarioEmpresaRol.query()
+      .where({ usuarioId: admin.id, empresaId: empresa.id })
+      .firstOrFail()
+    const hash = admin.password
+    const r = await client
+      .put(`/api/v1/admin/empresas/${empresa.id}/usuarios/${membresia.id}`)
+      .loginAs(await crearSuperadmin())
+      .json({ nombre_completo: 'Solo Nombre' })
+    r.assertStatus(200)
+    await admin.refresh()
+    assert.equal(admin.nombreCompleto, 'Solo Nombre')
+    assert.equal(admin.password, hash)
+    assert.notExists(
+      await Auditoria.query().where({ empresaId: empresa.id, accion: 'usuario.actualizar' }).first()
+    )
+  })
+
+  test('no permite usar el correo de otra cuenta y un cuerpo vacío no cambia nada', async ({
+    client,
+  }) => {
+    const admin = await crearUsuario()
+    const empresa = await crearEmpresa(admin)
+    await crearUsuario({ email: 'ocupado@prueba.pe' })
+    const membresia = await UsuarioEmpresaRol.query()
+      .where({ usuarioId: admin.id, empresaId: empresa.id })
+      .firstOrFail()
+    const sa = await crearSuperadmin()
+    const r = await client
+      .put(`/api/v1/admin/empresas/${empresa.id}/usuarios/${membresia.id}`)
+      .loginAs(sa)
+      .json({ email: 'ocupado@prueba.pe' })
+    r.assertStatus(422)
+    r.assertBodyContains({ errores: [{ campo: 'email' }] })
+
+    const mismo = await client
+      .put(`/api/v1/admin/empresas/${empresa.id}/usuarios/${membresia.id}`)
+      .loginAs(sa)
+      .json({ email: admin.email })
+    mismo.assertStatus(200)
+    const vacio = await client
+      .put(`/api/v1/admin/empresas/${empresa.id}/usuarios/${membresia.id}`)
+      .loginAs(sa)
+      .json({})
+    vacio.assertStatus(200)
+  })
+
   test('no deja la empresa sin Administrador', async ({ client }) => {
     const admin = await crearUsuario()
     const empresa = await crearEmpresa(admin)
